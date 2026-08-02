@@ -55,6 +55,15 @@ struct ChatPage {
     this.chatId = generateId()
     await this.refreshState()
     await this.loadConversations()
+    // Consume insight intent preset (小艺唤起 → 自动执行)
+    const preset: string | undefined = AppStorage.get<string>('intentPresetText')
+    if (preset && preset.length > 0) {
+      AppStorage.setOrCreate<string>('intentPresetText', '')
+      this.inputText = preset
+      setTimeout((): void => {
+        this.sendMessage()
+      }, 800)
+    }
   }
 
   async onPageShow(): Promise<void> {

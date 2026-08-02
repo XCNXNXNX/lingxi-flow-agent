@@ -3,7 +3,7 @@
 import { relationalStore } from '@kit.ArkData'
 import { common } from '@kit.AbilityKit'
 import { Logger } from '../utils/Logger'
-import { ChatMessage, ChatConversation, ScheduledTask, TaskRunLog, ToolCallRecord } from '../model/Types'
+import { ChatMessage, ChatConversation, ScheduledTask, TaskRunLog, ToolCallRecord, WorkflowRun } from '../model/Types'
 
 const DB_NAME: string = 'lingxi_flow.db'
 const STORE_CONFIG: relationalStore.StoreConfig = {
@@ -63,6 +63,18 @@ const CREATE_SCHEMA: string = `
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS workflow_runs (
+    id TEXT PRIMARY KEY,
+    goal TEXT NOT NULL,
+    status TEXT NOT NULL,
+    steps_json TEXT,
+    result TEXT,
+    chat_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_run_updated ON workflow_runs(updated_at);
 `
 
 export class DatabaseService {
@@ -256,6 +268,36 @@ export class DatabaseService {
       'INSERT INTO task_run_logs (task_id, run_at, duration_ms, status, result, error) VALUES (?, ?, ?, ?, ?, ?)',
       [log.taskId, log.runAt, log.durationMs, log.status, log.result, log.error]
     )
+  }
+
+  // --- Workflow runs (checkpoint/resume) ---
+
+  async saveWorkflowRun(run: WorkflowRun): Promise<void> {
+    await this.rdbStore!.executeSql(
+      'INSERT OR REPLACE INTO workflow_runs (id, goal, status, steps_json, result, chat_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [run.id, run.goal, run.status, run.stepsJson, run.result, run.chatId, run.createdAt, run.updatedAt]
+    )
+  }
+
+  async getLatestWorkflowRun(): Promise<WorkflowRun | null> {
+    const resultSet: relationalStore.ResultSet = await this.rdbStore!.querySql(
+      'SELECT id, goal, status, steps_json, result, chat_id, created_at, updated_at FROM workflow_runs ORDER BY updated_at DESC LIMIT 1'
+    )
+    let run: WorkflowRun | null = null
+    if (resultSet.goToNextRow()) {
+      run = {
+        id: resultSet.getString(resultSet.getColumnIndex('id')),
+        goal: resultSet.getString(resultSet.getColumnIndex('goal')),
+        status: resultSet.getString(resultSet.getColumnIndex('status')) as ('running' | 'done' | 'error'),
+        stepsJson: resultSet.getString(resultSet.getColumnIndex('steps_json')),
+        result: resultSet.getString(resultSet.getColumnIndex('result')),
+        chatId: resultSet.getString(resultSet.getColumnIndex('chat_id')),
+        createdAt: resultSet.getString(resultSet.getColumnIndex('created_at')),
+        updatedAt: resultSet.getString(resultSet.getColumnIndex('updated_at'))
+      }
+    }
+    resultSet.close()
+    return run
   }
 
   // --- KV Store ---

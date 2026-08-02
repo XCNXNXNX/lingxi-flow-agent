@@ -75,7 +75,7 @@ export class AgentCore {
     }
 
     initFileTools(filesDir)
-    initReminderTools()
+    await initReminderTools()
     initMemoryTools(filesDir)
     initCalendarTools(context)
     registerFileTools(this.toolRegistry)

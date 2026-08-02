@@ -4,6 +4,7 @@
     "pages/ChatPage",
     "pages/ResultPage",
     "pages/FileBrowserPage",
-    "pages/SettingsPage"
+    "pages/SettingsPage",
+    "pages/KnowledgePage"
   ]
 }

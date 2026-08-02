@@ -117,6 +117,19 @@ export interface TaskRunLog {
   error: string | null
 }
 
+// --- Workflow runs (ResultPage checkpoint/resume) ---
+
+export interface WorkflowRun {
+  id: string
+  goal: string
+  status: 'running' | 'done' | 'error'
+  stepsJson: string
+  result: string
+  chatId: string
+  createdAt: string
+  updatedAt: string
+}
+
 // --- Agent Events (for UI streaming) ---
 
 export interface AgentTextEvent {

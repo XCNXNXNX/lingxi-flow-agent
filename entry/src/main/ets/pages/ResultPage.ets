@@ -2,13 +2,15 @@
 import { router } from '@kit.ArkUI'
 import { agentCore } from '../engine/AgentCore'
 import { configService } from '../services/ConfigService'
+import { dbService } from '../engine/DatabaseService'
 import { generateId } from '../utils/TextFormatter'
 import {
   AgentEvent,
   AgentTextEvent,
   AgentToolUseEvent,
   AgentErrorEvent,
-  TaskStatus
+  TaskStatus,
+  WorkflowRun
 } from '../model/Types'
 import { ThemeStyle, ThemeColors, getThemeColors } from '../utils/ThemeService'
 import { MarkdownText } from '../components/MarkdownText'
@@ -34,15 +36,55 @@ struct ResultPage {
   @State aiResponse: string = ''
   @State hasApiKey: boolean = false
   @State typedResponse: string = ''
+  @State lastRun: WorkflowRun | null = null
+  @State showLastRun: boolean = false
   private startTime: number = 0
   private timer: number = -1
   private executing: boolean = false
   private twTimer: number = -1
+  private currentRunId: string = ''
+  private currentChatId: string = ''
+  private runCreatedAt: string = ''
+  private resumeChatId: string = ''
 
   col(): ThemeColors { return getThemeColors(this.currentTheme) }
 
   async aboutToAppear(): Promise<void> {
     this.hasApiKey = await configService.hasApiKey()
+    await this.loadLastRun()
+  }
+
+  async loadLastRun(): Promise<void> {
+    try {
+      const run: WorkflowRun | null = await dbService.getLatestWorkflowRun()
+      if (run && run.goal.length > 0 && this.goal !== run.goal) {
+        this.lastRun = run
+        this.showLastRun = true
+      } else {
+        this.lastRun = null
+        this.showLastRun = false
+      }
+    } catch (_e) {
+      this.lastRun = null
+    }
+  }
+
+  // Resume the last task with its full conversation context
+  resumeLastRun(): void {
+    if (!this.lastRun) {
+      return
+    }
+    this.goal = this.lastRun.goal
+    this.inputText = this.lastRun.goal
+    this.resumeChatId = this.lastRun.chatId
+    this.showLastRun = false
+    try {
+      const steps: AiStep[] = JSON.parse(this.lastRun.stepsJson) as AiStep[]
+      this.steps = steps
+    } catch (_e) {
+      this.steps = []
+    }
+    this.startAiFlow()
   }
 
   aboutToDisappear(): void {
@@ -59,17 +101,29 @@ struct ResultPage {
     this.goal = text
     this.aiResponse = ''
     this.typedResponse = ''
-    this.steps = []
+    if (this.resumeChatId.length === 0) {
+      // fresh run: reset everything
+      this.steps = []
+    }
     this.progress = 0
     this.inputText = ''
     this.startTime = Date.now()
     this.flowStatus = 'running'
+    this.lastRun = null
+    this.showLastRun = false
 
     this.timer = setInterval(() => {
       this.elapsed = Date.now() - this.startTime
     }, 100)
 
-    const chatId: string = 'task_' + generateId()
+    let chatId: string = this.resumeChatId
+    if (chatId.length === 0) {
+      chatId = 'task_' + generateId()
+    }
+    this.resumeChatId = ''
+    this.currentChatId = chatId
+    this.currentRunId = 'wf_' + generateId()
+    this.runCreatedAt = new Date().toISOString()
 
     await agentCore.runAgent(text, chatId, (event: AgentEvent): void => {
       if (event.type === 'tool_use') {
@@ -81,17 +135,42 @@ struct ResultPage {
           result: te.result
         })
         this.progress = Math.round(Math.min(this.steps.length / 8, 1) * 100)
+        this.saveRun('running', JSON.stringify(this.steps), '')
       } else if (event.type === 'text') {
         const ae: AgentTextEvent = event as AgentTextEvent
         this.startTypewriter(ae.content)
+        this.saveRun('running', JSON.stringify(this.steps), ae.content)
       } else if (event.type === 'done') {
         this.finishFlow()
+        this.saveRun('done', JSON.stringify(this.steps), this.aiResponse)
       } else if (event.type === 'error') {
         const ae: AgentErrorEvent = event as AgentErrorEvent
         this.startTypewriter('❌ ' + ae.error)
         this.finishFlow()
+        this.saveRun('error', JSON.stringify(this.steps), ae.error)
       }
     })
+  }
+
+  private async saveRun(status: string, stepsJson: string, result: string): Promise<void> {
+    if (this.currentRunId.length === 0) {
+      return
+    }
+    try {
+      const run: WorkflowRun = {
+        id: this.currentRunId,
+        goal: this.goal,
+        status: status as ('running' | 'done' | 'error'),
+        stepsJson: stepsJson,
+        result: result,
+        chatId: this.currentChatId,
+        createdAt: this.runCreatedAt,
+        updatedAt: new Date().toISOString()
+      }
+      await dbService.saveWorkflowRun(run)
+    } catch (_e) {
+      // persistence must never break the task
+    }
   }
 
   finishFlow(): void {
@@ -215,6 +294,35 @@ struct ResultPage {
             this.tag('设提醒')
           }
           .margin({ bottom: $r('app.float.spacing_sm') })
+
+          if (this.showLastRun && this.lastRun) {
+            Column() {
+              Text(this.lastRun.goal)
+                .fontSize($r('app.float.font_size_body'))
+                .fontColor(this.col().textPrimary)
+                .fontWeight(FontWeight.Medium)
+                .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+                .width('100%')
+              Text(this.lastRunStatusText(this.lastRun) + ' · ' + this.fmtTime(this.lastRun.updatedAt))
+                .fontSize($r('app.float.font_size_caption'))
+                .fontColor(this.col().textTertiary)
+                .width('100%')
+                .margin({ top: 4 })
+              Button('▶ 继续上次任务')
+                .fontSize($r('app.float.font_size_caption'))
+                .fontColor('#FFFFFF')
+                .backgroundColor(this.col().accent)
+                .borderRadius($r('app.float.radius_md'))
+                .height(36)
+                .margin({ top: $r('app.float.spacing_sm') })
+                .onClick(() => { this.resumeLastRun() })
+            }
+            .width('100%')
+            .padding($r('app.float.spacing_md'))
+            .backgroundColor(this.col().glassCard)
+            .borderRadius($r('app.float.radius_lg'))
+            .border({ width: 1, color: this.col().divider })
+          }
         }
         .width('100%').layoutWeight(1).alignItems(HorizontalAlign.Center)
         .padding({ left: $r('app.float.spacing_lg'), right: $r('app.float.spacing_lg') })
@@ -324,5 +432,27 @@ struct ResultPage {
       .borderRadius($r('app.float.radius_sm'))
       .margin({ right: $r('app.float.spacing_sm') })
       .onClick(() => { this.inputText = text; this.startAiFlow() })
+  }
+
+  lastRunStatusText(run: WorkflowRun): string {
+    if (run.status === 'running') {
+      return '⏸ 未完成（可续跑）'
+    }
+    if (run.status === 'error') {
+      return '✗ 出错（可重试）'
+    }
+    return '✓ 已完成'
+  }
+
+  fmtTime(iso: string): string {
+    try {
+      const d: Date = new Date(iso)
+      return (d.getMonth() + 1).toString().padStart(2, '0') + '-' +
+        d.getDate().toString().padStart(2, '0') + ' ' +
+        d.getHours().toString().padStart(2, '0') + ':' +
+        d.getMinutes().toString().padStart(2, '0')
+    } catch (_e) {
+      return ''
+    }
   }
 }

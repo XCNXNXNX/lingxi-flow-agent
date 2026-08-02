@@ -1,0 +1,16 @@
+{
+  "insightIntents": [
+    {
+      "intentName": "JumpFunctionPage",
+      "domain": "ToolsDomain",
+      "intentVersion": "1.0.1",
+      "srcEntry": "./ets/entryability/InsightIntentExecutorImpl.ets",
+      "uiAbility": {
+        "ability": "EntryAbility",
+        "executeMode": [
+          "foreground"
+        ]
+      }
+    }
+  ]
+}

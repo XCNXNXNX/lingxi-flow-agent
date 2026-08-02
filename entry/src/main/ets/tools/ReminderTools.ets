@@ -4,6 +4,7 @@
 import reminderAgentManager from '@ohos.reminderAgentManager'
 import { notificationManager } from '@kit.NotificationKit'
 import { ToolRegistry } from '../engine/ToolRegistry'
+import { dbService } from '../engine/DatabaseService'
 import { Logger } from '../utils/Logger'
 
 interface ReminderItem {
@@ -11,12 +12,32 @@ interface ReminderItem {
   title: string
   startTime: number
   description: string
+  fired: boolean
 }
+
+const REMINDER_KV_KEY: string = 'lingxi_reminders'
 
 let gReminders: ReminderItem[] = []
 
-export function initReminderTools(): void {
+export async function initReminderTools(): Promise<void> {
   gReminders = []
+  try {
+    const raw: string | null = await dbService.getKV(REMINDER_KV_KEY)
+    if (raw && raw.length > 0) {
+      gReminders = JSON.parse(raw) as ReminderItem[]
+    }
+  } catch (_e) {
+    gReminders = []
+  }
+  Logger.info('ReminderTools', 'loaded ' + gReminders.length + ' persisted reminders')
+}
+
+async function saveReminders(): Promise<void> {
+  try {
+    await dbService.setKV(REMINDER_KV_KEY, JSON.stringify(gReminders))
+  } catch (_e) {
+    // persistence failure must not break reminder creation
+  }
 }
 
 export function getReminders(): ReminderItem[] {
@@ -99,7 +120,8 @@ export function registerReminderTools(registry: ToolRegistry): void {
       // 1) System-level reminder (fires on time, works in background)
       try {
         const reminderId: number = await publishSystemReminder(title, desc, minutes)
-        gReminders.push({ id: reminderId, title: title, startTime: fireAt, description: desc })
+        gReminders.push({ id: reminderId, title: title, startTime: fireAt, description: desc, fired: false })
+        await saveReminders()
         Logger.info('ReminderTools', 'scheduled via ReminderAgent: ' + title + ' in ' + minutes + 'min')
         return '已创建提醒: ' + title + '（' + minutes + ' 分钟后提醒你）'
       } catch (e) {
@@ -107,17 +129,23 @@ export function registerReminderTools(registry: ToolRegistry): void {
       }
 
       // 2) Fallback: in-app timer (app must stay alive)
-      const item: ReminderItem = { id: Date.now(), title: title, startTime: fireAt, description: desc }
+      const item: ReminderItem = { id: Date.now(), title: title, startTime: fireAt, description: desc, fired: false }
       gReminders.push(item)
+      await saveReminders()
       setTimeout((): void => {
         trySendNotification(title, desc.length > 0 ? desc : title)
         const filtered: ReminderItem[] = []
         for (let i: number = 0; i < gReminders.length; i++) {
           if (gReminders[i].id !== item.id) {
             filtered.push(gReminders[i])
+          } else {
+            const fired: ReminderItem = gReminders[i]
+            fired.fired = true
+            filtered.push(fired)
           }
         }
         gReminders = filtered
+        saveReminders()
       }, minutes * 60000)
       return '已创建提醒: ' + title + '（' + minutes + ' 分钟后提醒你）'
     }
@@ -128,12 +156,30 @@ export function registerReminderTools(registry: ToolRegistry): void {
     'List all active reminders with their scheduled fire times',
     SCHEMA_LIST_REMINDERS,
     async (_input: Record<string, Object>): Promise<string> => {
-      if (gReminders.length === 0) {
+      const active: ReminderItem[] = []
+      for (let i: number = 0; i < gReminders.length; i++) {
+        if (!gReminders[i].fired) {
+          active.push(gReminders[i])
+        }
+      }
+      // Merge with system-level valid reminders (they survive app restarts)
+      let systemCount: number = 0
+      try {
+        const valid: reminderAgentManager.ReminderRequest[] = await reminderAgentManager.getValidReminders()
+        systemCount = valid.length
+      } catch (_e) {
+        systemCount = 0
+      }
+      if (active.length === 0 && systemCount === 0) {
         return '没有提醒'
       }
-      let out: string = '共 ' + gReminders.length + ' 个提醒:\n'
-      for (let i: number = 0; i < gReminders.length; i++) {
-        const r: ReminderItem = gReminders[i]
+      let out: string = '共 ' + active.length + ' 个提醒'
+      if (systemCount > 0) {
+        out += '（系统层另有 ' + systemCount + ' 个生效提醒）'
+      }
+      out += ':\n'
+      for (let i: number = 0; i < active.length; i++) {
+        const r: ReminderItem = active[i]
         const d: Date = new Date(r.startTime)
         out += '  ' + (i + 1) + '. ' + r.title + '（' +
           d.getHours().toString().padStart(2, '0') + ':' +
@@ -167,6 +213,7 @@ export function registerReminderTools(registry: ToolRegistry): void {
         }
       }
       gReminders = filtered
+      await saveReminders()
       if (!removed) {
         return '未找到提醒: ' + title
       }

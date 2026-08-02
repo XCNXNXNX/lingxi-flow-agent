@@ -61,6 +61,11 @@ interface ScoredChunk {
 
 type RagStatus = 'uninitialized' | 'indexing' | 'ready' | 'fallback'
 
+export interface SourceFileInfo {
+  name: string
+  size: number
+}
+
 export class RagService {
   private store: relationalStore.RdbStore | null = null
   private filesDir: string = ''
@@ -72,6 +77,10 @@ export class RagService {
 
   getStatus(): RagStatus {
     return this.status
+  }
+
+  getFilesDir(): string {
+    return this.filesDir
   }
 
   async init(context: common.UIAbilityContext, filesDir: string): Promise<void> {
@@ -95,6 +104,80 @@ export class RagService {
   // Called by MemoryTools after notes change - next retrieval rebuilds the index
   markDirty(): void {
     this.dirty = true
+  }
+
+  // Force an index rebuild on next retrieval
+  forceRebuild(): void {
+    this.dirty = true
+    this.buildIndexIfNeeded()
+  }
+
+  // --- Info for the knowledge base management page ---
+
+  async getChunkCount(): Promise<number> {
+    if (!this.store) {
+      return 0
+    }
+    try {
+      const resultSet: relationalStore.ResultSet = await this.store.querySql(
+        'SELECT COUNT(*) AS c FROM ' + TABLE_CHUNKS)
+      let count: number = 0
+      if (resultSet.goToNextRow()) {
+        count = resultSet.getLong(resultSet.getColumnIndex('c'))
+      }
+      resultSet.close()
+      return count
+    } catch (e) {
+      return 0
+    }
+  }
+
+  // List knowledge source files: [path, size] pairs for the management page
+  async getSourceFiles(): Promise<SourceFileInfo[]> {
+    const result: SourceFileInfo[] = []
+    const dirs: string[] = [this.filesDir + '/memory', this.filesDir + '/knowledge']
+    for (let i: number = 0; i < dirs.length; i++) {
+      try {
+        const names: string[] = fileIo.listFileSync(dirs[i])
+        for (let j: number = 0; j < names.length; j++) {
+          const n: string = names[j]
+          if (!n.endsWith('.md') && !n.endsWith('.txt')) {
+            continue
+          }
+          try {
+            const st: fileIo.Stat = fileIo.statSync(dirs[i] + '/' + n)
+            const info: SourceFileInfo = {
+              name: (dirs[i].endsWith('/memory') ? '记忆/' : '知识库/') + n,
+              size: st.size
+            }
+            result.push(info)
+          } catch (_e) {
+            // skip unreadable
+          }
+        }
+      } catch (_e) {
+        // dir may not exist
+      }
+    }
+    try {
+      const rootNames: string[] = fileIo.listFileSync(this.filesDir)
+      for (let k: number = 0; k < rootNames.length; k++) {
+        const n: string = rootNames[k]
+        if ((!n.endsWith('.md') && !n.endsWith('.txt')) || n === 'note.txt') {
+          continue
+        }
+        try {
+          const st: fileIo.Stat = fileIo.statSync(this.filesDir + '/' + n)
+          const info: SourceFileInfo = { name: '根目录/' + n, size: st.size }
+          result.push(info)
+        } catch (_e) {
+          // skip
+        }
+      }
+    } catch (_e) {
+      // ignore
+    }
+    return result
   }
 
   // --- Index building (single-flight) ---

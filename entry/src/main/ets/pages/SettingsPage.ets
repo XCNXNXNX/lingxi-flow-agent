@@ -232,6 +232,29 @@ struct SettingsPage {
             })
           }
 
+          // Knowledge base entry
+          Row() {
+            Text('📚').fontSize(18).margin({ right: $r('app.float.spacing_sm') })
+            Column() {
+              Text('知识库管理')
+                .fontSize($r('app.float.font_size_body'))
+                .fontColor(this.col().textPrimary).fontWeight(FontWeight.Medium)
+              Text('查看已索引文档，重建知识索引')
+                .fontSize($r('app.float.font_size_small'))
+                .fontColor(this.col().textTertiary).margin({ top: 2 })
+            }
+            .alignItems(HorizontalAlign.Start).layoutWeight(1)
+            Text('›').fontSize(18).fontColor(this.col().textTertiary)
+          }
+          .width('100%')
+          .padding($r('app.float.spacing_md'))
+          .backgroundColor(this.col().surface)
+          .borderRadius($r('app.float.radius_md'))
+          .border({ width: 1, color: this.col().divider })
+          .margin({ left: $r('app.float.spacing_lg'), right: $r('app.float.spacing_lg'),
+            top: $r('app.float.spacing_lg') })
+          .onClick(() => { router.pushUrl({ url: 'pages/KnowledgePage' }) })
+
           Column().height($r('app.float.spacing_xxl'))
         }
         .width('100%').alignItems(HorizontalAlign.Start)
