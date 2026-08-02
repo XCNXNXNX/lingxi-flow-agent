@@ -22,6 +22,7 @@ async function fetchWeather(city: string): Promise<WeatherData> {
       connectTimeout: 5000,
       readTimeout: 5000
     })
+    req.destroy()
     if (resp.responseCode === 200) {
       const data: Record<string, Object> = JSON.parse(resp.result as string) as Record<string, Object>
       const current: Record<string, Object> = (data['current_condition'] as Array<Record<string, Object>>)[0]
@@ -35,7 +36,6 @@ async function fetchWeather(city: string): Promise<WeatherData> {
         wind: (current['winddir16Point'] as string || '') + ' ' + (current['windspeedKmph'] as string || '') + 'km/h'
       }
     }
-    req.destroy()
   } catch (e) {
     Logger.warn('WeatherTools', 'fetch failed: ' + (e as Error).message)
   }

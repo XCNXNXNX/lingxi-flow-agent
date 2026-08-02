@@ -48,7 +48,7 @@ const SYSTEM_PROMPT: string = `你是灵犀(Lingxi Flow)，运行在HarmonyOS上
 1. 使用 get_current_date 确认今天日期
 2. 使用 get_current_time 确认现在时间
 3. 使用 get_weather 查询天气（当需要时）
-4. 使用 create_reminder 创建提醒
+4. 使用 create_reminder 创建提醒：若用户说"X分钟后提醒我..."，把 X 作为 minutes 参数传入；若用户说具体时间（如"下午3点"），先用 get_current_time 计算当前与目标时间的分钟差，再作为 minutes 传入；若用户没提时间，默认 minutes=60
 5. 最终用关心的语气总结，体现你为用户的周全考虑
 
 当用户问到新闻、百科、时效性信息时，应使用 web_search 查询，需要细节时再用 web_fetch 抓取正文。
@@ -168,13 +168,26 @@ export class AgentCore {
 
         let response: ApiResponse
         if (useStream) {
-          response = await client.sendMessageStream(apiMessages, allTools,
-            (text: string, reason: string): void => {
-              if (reason.length === 0) {
-                const streamEvent: AgentStreamEvent = { type: 'stream', content: text }
-                onEvent(streamEvent)
-              }
-            })
+          try {
+            response = await client.sendMessageStream(apiMessages, allTools,
+              (text: string, reason: string): void => {
+                if (reason.length === 0) {
+                  const streamEvent: AgentStreamEvent = { type: 'stream', content: text }
+                  onEvent(streamEvent)
+                }
+              })
+            // Safety: some providers mishandle stream:true and return empty - fall back to non-streaming
+            const msg: ApiMessage = response.choices[0].message
+            const hasContent: boolean = (msg.content || '').length > 0
+            const hasToolCalls: boolean = msg.toolCalls !== undefined && msg.toolCalls.length > 0
+            if (!hasContent && !hasToolCalls) {
+              Logger.warn('AgentCore', 'stream returned empty, retrying non-stream')
+              response = await client.sendMessage(apiMessages, allTools)
+            }
+          } catch (e) {
+            Logger.warn('AgentCore', 'stream failed, retrying non-stream: ' + (e as Error).message)
+            response = await client.sendMessage(apiMessages, allTools)
+          }
         } else {
           response = await client.sendMessage(apiMessages, allTools)
         }

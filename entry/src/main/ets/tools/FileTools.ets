@@ -34,6 +34,8 @@ const SCHEMA_DELETE: Record<string, Object> = JSON.parse('{"type":"object","prop
 
 const SCHEMA_SEARCH: Record<string, Object> = JSON.parse('{"type":"object","properties":{"query":{"type":"string","description":"Search keyword"}},"required":["query"]}') as Record<string, Object>
 
+const SCHEMA_PASTE: Record<string, Object> = JSON.parse('{"type":"object","properties":{"path":{"type":"string","description":"Destination path to paste to"}},"required":["path"]}') as Record<string, Object>
+
 export function registerFileTools(registry: ToolRegistry): void {
   registry.registerTool(
     'mkdir',
@@ -173,7 +175,7 @@ let gClipboard: string = ''
   registry.registerTool(
     'paste_file',
     'Paste the previously copied file to a new location',
-    SCHEMA_WRITE,
+    SCHEMA_PASTE,
     async (input: Record<string, Object>): Promise<string> => {
       const dest: string = input['path'] as string || ''
       if (gClipboard.length === 0) {

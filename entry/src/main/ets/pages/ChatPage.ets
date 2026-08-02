@@ -78,7 +78,15 @@ struct ChatPage {
   }
 
   async loadConversations(): Promise<void> {
-    this.conversations = await dbService.getAllChats()
+    const all: ChatConversation[] = await dbService.getAllChats()
+    // Hide internal task-run chats from the conversation list
+    const filtered: ChatConversation[] = []
+    for (let i: number = 0; i < all.length; i++) {
+      if (!all[i].id.startsWith('task_')) {
+        filtered.push(all[i])
+      }
+    }
+    this.conversations = filtered
     if (this.conversations.length > 0 && this.conversations[0].id !== this.chatId) {
       const first: ChatConversation = this.conversations[0]
       this.chatId = first.id
@@ -108,11 +116,9 @@ struct ChatPage {
     this.showChatMenu = false
     this.messages = []
     await this.loadConversations()
-    const updated: ChatConversation[] = await dbService.getAllChats()
-    if (updated.length > 0) {
-      this.chatId = updated[0].id
-      this.chatName = updated[0].name
-      this.conversations = updated
+    if (this.conversations.length > 0) {
+      this.chatId = this.conversations[0].id
+      this.chatName = this.conversations[0].name
       await this.loadMessages()
     } else {
       await this.newChat()
@@ -172,7 +178,9 @@ struct ChatPage {
 
   scrollToBottom(): void {
     setTimeout((): void => {
-      this.scroller.scrollToIndex(this.messages.length - 1)
+      if (this.messages.length > 0) {
+        this.scroller.scrollToIndex(this.messages.length - 1)
+      }
     }, 100)
   }
 
@@ -214,6 +222,7 @@ struct ChatPage {
 
     const toolCalls: ToolCallRecord[] = []
     let streamedText: string = ''
+    let replyReceived: boolean = false
     await agentCore.runAgentStream(text, this.chatId, (event: AgentEvent): void => {
       if (event.type === 'stream') {
         streamedText = event.content
@@ -234,6 +243,7 @@ struct ChatPage {
           }
         }
       } else if (event.type === 'text') {
+        replyReceived = true
         if (streamedText.length > 0) {
           // Text was already streamed live - replace the bubble directly
           this.replaceThinking(thinkingId, event.content, pairId, toolCalls)
@@ -243,8 +253,21 @@ struct ChatPage {
           this.startTypewriter(thinkingId, event.content, pairId, toolCalls)
         }
       } else if (event.type === 'error') {
+        replyReceived = true
         this.startTypewriter(thinkingId, '❌ ' + event.error, pairId)
       } else if (event.type === 'done') {
+        // Safety net: always reset running state so the UI can never get stuck
+        this.isRunning = false
+        this.currentToolInfo = ''
+        if (!replyReceived) {
+          const stuckIdx: number = this.messages.findIndex((m: DisplayMessage): boolean => m.id === thinkingId)
+          if (stuckIdx >= 0) {
+            const fallback: string = toolCalls.length > 0
+              ? '✅ 已执行 ' + toolCalls.length + ' 个工具，但未返回文字回复，请继续提问'
+              : '（未能获取到 AI 回复，请检查网络或 API 配置后重试）'
+            this.replaceThinking(thinkingId, fallback, pairId, toolCalls)
+          }
+        }
         if (isFirstMsg) { this.generateChatName(text) }
       }
       this.scrollToBottom()

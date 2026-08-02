@@ -93,7 +93,12 @@ interface ApiStreamChunk {
 interface ApiStreamChoice {
   index: number
   delta?: ApiStreamDelta
+  message?: ApiStreamMessage
   finish_reason?: string | null
+}
+
+interface ApiStreamMessage {
+  content?: string | null
 }
 
 interface ApiStreamDelta {
@@ -284,13 +289,30 @@ export class ApiClient {
     let accText: string = ''
     let finishReason: string = ''
     let resolved: boolean = false
+    let lastDataAt: number = Date.now()
 
     return new Promise<ApiResponse>((resolve: (resp: ApiResponse) => void, reject: (err: Error) => void): void => {
+      // Watchdog: if no data arrives for 90s, fail instead of hanging forever
+      const watchdog: number = setInterval((): void => {
+        if (resolved) {
+          clearInterval(watchdog)
+          return
+        }
+        if (Date.now() - lastDataAt > 90000) {
+          resolved = true
+          clearInterval(watchdog)
+          httpRequest.destroy()
+          reject(new Error('流式响应超时（90 秒无数据）'))
+        }
+      }, 15000)
+
       const finalize = (): void => {
         if (resolved) {
           return
         }
         resolved = true
+        clearInterval(watchdog)
+        httpRequest.destroy()
         const toolCalls: ToolCall[] = []
         toolCallMap.forEach((tc: ToolCall): void => {
           toolCalls.push(tc)
@@ -319,6 +341,7 @@ export class ApiClient {
       }
 
       httpRequest.on('dataReceive', (data: ArrayBuffer): void => {
+        lastDataAt = Date.now()
         buffer += decoder.decodeWithStream(new Uint8Array(data))
         let idx: number = buffer.indexOf('\n')
         while (idx >= 0) {
@@ -349,6 +372,10 @@ export class ApiClient {
                 if (delta.tool_calls && delta.tool_calls.length > 0) {
                   this.accumulateToolCall(toolCallMap, delta.tool_calls)
                 }
+              } else if (choice.message && choice.message.content && choice.message.content.length > 0) {
+                // Non-standard provider: full message in one chunk instead of deltas
+                accText = choice.message.content
+                onDelta(accText, finishReason)
               }
             } catch (_e) {
               // ignore malformed frames (keep-alive etc.)
