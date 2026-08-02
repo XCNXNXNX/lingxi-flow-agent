@@ -14,6 +14,7 @@ import { registerCalendarTools } from '../tools/CalendarTools'
 import { registerWeatherTools } from '../tools/WeatherTools'
 import { registerWebTools } from '../tools/WebTools'
 import { registerMemoryTools, initMemoryTools } from '../tools/MemoryTools'
+import { mcpClient } from '../services/McpClient'
 import {
   AgentEvent,
   AgentTextEvent,
@@ -76,6 +77,11 @@ export class AgentCore {
     registerWeatherTools(this.toolRegistry)
     registerWebTools(this.toolRegistry)
     registerMemoryTools(this.toolRegistry)
+    try {
+      await mcpClient.initAndRegister(this.toolRegistry)
+    } catch (e) {
+      Logger.warn('AgentCore', 'MCP init failed: ' + (e as Error).message)
+    }
 
     this.initialized = true
     Logger.info('AgentCore', 'initialized with ' + this.toolRegistry.getToolDefinitions().length + ' tools')

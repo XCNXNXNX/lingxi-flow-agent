@@ -40,6 +40,7 @@ struct ChatPage {
   @State apiKey: string = ''
   @State apiModel: string = 'deepseek-chat'
   @State embedKey: string = ''
+  @State mcpUrl: string = ''
   @State fetchingModels: boolean = false
   @State modelList: string[] = []
   @State deleteConfirmPair: string = ''
@@ -77,6 +78,7 @@ struct ChatPage {
       this.apiModel = cfg.model
     }
     this.embedKey = await configService.getEmbeddingKey()
+    this.mcpUrl = await configService.getMcpUrl()
   }
 
   async loadConversations(): Promise<void> {
@@ -371,6 +373,7 @@ struct ChatPage {
     }
     await configService.saveApiConfig(cfg)
     await configService.saveEmbeddingKey(this.embedKey.trim())
+    await configService.saveMcpUrl(this.mcpUrl.trim())
     this.hasApiKey = true
     this.showSettings = false
   }
@@ -750,6 +753,13 @@ struct ChatPage {
               .fontColor(this.col().textPrimary).placeholderColor(this.col().textTertiary)
               .backgroundColor(this.col().surfaceVariant).borderRadius($r('app.float.radius_sm'))
               .onChange((v: string): void => { this.embedKey = v })
+              .margin({ top: $r('app.float.spacing_xs'), bottom: $r('app.float.spacing_md') })
+
+            this.settingsField('MCP 服务器（可选，重启生效）', this.col())
+            TextInput({ text: this.mcpUrl, placeholder: 'http://192.168.x.x:8080/mcp（远程工具）' })
+              .fontColor(this.col().textPrimary).placeholderColor(this.col().textTertiary)
+              .backgroundColor(this.col().surfaceVariant).borderRadius($r('app.float.radius_sm'))
+              .onChange((v: string): void => { this.mcpUrl = v })
               .margin({ top: $r('app.float.spacing_xs'), bottom: $r('app.float.spacing_md') })
 
             this.settingsField('模型', this.col())

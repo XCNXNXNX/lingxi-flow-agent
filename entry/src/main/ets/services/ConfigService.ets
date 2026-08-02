@@ -12,6 +12,7 @@ const KEY_MAX_TOKENS = 'max_tokens'
 const KEY_TEMPERATURE = 'temperature'
 const KEY_EMBED_KEY = 'embedding_key'
 const KEY_EMBED_URL = 'embedding_url'
+const KEY_MCP_URL = 'mcp_url'
 
 const DEFAULT_BASE_URL = 'https://api.deepseek.com/v1'
 const DEFAULT_MODEL = 'deepseek-chat'
@@ -104,6 +105,17 @@ export class ConfigService {
  }
  // Default: SiliconFlow BGE-M3 (reachable from China, unlike OpenAI)
  return 'https://api.siliconflow.cn/v1/embeddings'
+ }
+
+ // --- MCP server config ---
+
+ async getMcpUrl(): Promise<string> {
+ return await this.pref!.get(KEY_MCP_URL, '') as string
+ }
+
+ async saveMcpUrl(url: string): Promise<void> {
+ await this.pref!.put(KEY_MCP_URL, url)
+ await this.pref!.flush()
  }
 
   async hasApiKey(): Promise<boolean> {
