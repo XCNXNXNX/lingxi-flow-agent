@@ -4,6 +4,7 @@ import { window } from '@kit.ArkUI'
 import { configService } from '../services/ConfigService'
 import { dbService } from '../engine/DatabaseService'
 import { agentCore } from '../engine/AgentCore'
+import { ragService } from '../engine/RagService'
 import { taskScheduler } from '../engine/TaskScheduler'
 import { ThemeService } from '../utils/ThemeService'
 
@@ -16,6 +17,8 @@ export default class EntryAbility extends UIAbility {
       await dbService.init(this.context)
       await ThemeService.init()
       const filesDir: string = this.context.filesDir
+      await ragService.init(this.context, filesDir)
+      ragService.buildIndexIfNeeded()
       await agentCore.init(filesDir)
       taskScheduler.start()
       hilog.info(DOMAIN, 'EntryAbility', 'Services initialized')

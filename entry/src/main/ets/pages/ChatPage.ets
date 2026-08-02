@@ -39,6 +39,7 @@ struct ChatPage {
   @State apiUrl: string = 'https://api.deepseek.com/v1'
   @State apiKey: string = ''
   @State apiModel: string = 'deepseek-chat'
+  @State embedKey: string = ''
   @State fetchingModels: boolean = false
   @State modelList: string[] = []
   @State deleteConfirmPair: string = ''
@@ -75,6 +76,7 @@ struct ChatPage {
       this.apiKey = cfg.apiKey
       this.apiModel = cfg.model
     }
+    this.embedKey = await configService.getEmbeddingKey()
   }
 
   async loadConversations(): Promise<void> {
@@ -368,6 +370,7 @@ struct ChatPage {
       maxTokens: 8192, temperature: 0.7
     }
     await configService.saveApiConfig(cfg)
+    await configService.saveEmbeddingKey(this.embedKey.trim())
     this.hasApiKey = true
     this.showSettings = false
   }
@@ -739,6 +742,14 @@ struct ChatPage {
               .fontColor(this.col().textPrimary).placeholderColor(this.col().textTertiary)
               .backgroundColor(this.col().surfaceVariant).borderRadius($r('app.float.radius_sm'))
               .onChange((v: string): void => { this.apiKey = v })
+              .margin({ top: $r('app.float.spacing_xs'), bottom: $r('app.float.spacing_md') })
+
+            this.settingsField('嵌入 Key（可选，RAG 知识库）', this.col())
+            TextInput({ text: this.embedKey, placeholder: 'sk-...（SiliconFlow，留空则用关键词检索）' })
+              .type(InputType.Password)
+              .fontColor(this.col().textPrimary).placeholderColor(this.col().textTertiary)
+              .backgroundColor(this.col().surfaceVariant).borderRadius($r('app.float.radius_sm'))
+              .onChange((v: string): void => { this.embedKey = v })
               .margin({ top: $r('app.float.spacing_xs'), bottom: $r('app.float.spacing_md') })
 
             this.settingsField('模型', this.col())

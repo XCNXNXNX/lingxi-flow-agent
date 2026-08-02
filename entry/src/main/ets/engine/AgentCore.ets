@@ -7,6 +7,7 @@ import { ApiClient } from '../services/ApiClient'
 import { ToolRegistry } from './ToolRegistry'
 import { dbService } from './DatabaseService'
 import { configService } from '../services/ConfigService'
+import { ragService } from './RagService'
 import { registerFileTools, initFileTools } from '../tools/FileTools'
 import { registerReminderTools, initReminderTools } from '../tools/ReminderTools'
 import { registerCalendarTools } from '../tools/CalendarTools'
@@ -142,9 +143,21 @@ export class AgentCore {
       // Load conversation history
       const history: ChatMessage[] = await dbService.getMessages(chatId, CONTEXT_WINDOW)
 
-      // Build API messages array
+      // Build API messages array with RAG-augmented system prompt
       const apiMessages: ApiMessage[] = []
-      apiMessages.push({ role: 'system', content: SYSTEM_PROMPT })
+      let systemContent: string = SYSTEM_PROMPT
+      try {
+        const ragChunks: string[] = await ragService.retrieve(userMessage, 3)
+        if (ragChunks.length > 0) {
+          systemContent = systemContent +
+            '\n\n【知识库参考】以下是你的知识库中与用户问题相关的内容，回答时优先参考：\n' +
+            ragChunks.join('\n---\n') +
+            '\n【知识库结束】若上述内容与问题无关，请忽略。'
+        }
+      } catch (_e) {
+        // RAG failure must never break the chat
+      }
+      apiMessages.push({ role: 'system', content: systemContent })
 
       for (let i: number = 0; i < history.length; i++) {
         const msg: ChatMessage = history[i]

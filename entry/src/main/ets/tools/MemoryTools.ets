@@ -3,6 +3,7 @@
 // Ported from NanoClaw tools/MemoryTools.ets, adapted to Lingxi Flow conventions
 import { fileIo } from '@kit.CoreFileKit'
 import { ToolRegistry } from '../engine/ToolRegistry'
+import { ragService } from '../engine/RagService'
 import { Logger } from '../utils/Logger'
 
 let gMemoryDir: string = ''
@@ -48,6 +49,7 @@ async function memoryWrite(input: Record<string, Object>): Promise<string> {
       fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC)
     fileIo.writeSync(file.fd, content)
     fileIo.closeSync(file)
+    ragService.markDirty()
     return '已记住 "' + name + '"（' + content.length + ' 字符）'
   } catch (e) {
     return '保存记忆失败: ' + (e as Error).message
