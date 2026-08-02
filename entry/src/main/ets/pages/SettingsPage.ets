@@ -232,6 +232,29 @@ struct SettingsPage {
             })
           }
 
+          // Device collaboration entry
+          Row() {
+            Text('🔗').fontSize(18).margin({ right: $r('app.float.spacing_sm') })
+            Column() {
+              Text('跨设备协同')
+                .fontSize($r('app.float.font_size_body'))
+                .fontColor(this.col().textPrimary).fontWeight(FontWeight.Medium)
+              Text('发现附近设备，同步任务进度与提醒')
+                .fontSize($r('app.float.font_size_small'))
+                .fontColor(this.col().textTertiary).margin({ top: 2 })
+            }
+            .alignItems(HorizontalAlign.Start).layoutWeight(1)
+            Text('›').fontSize(18).fontColor(this.col().textTertiary)
+          }
+          .width('100%')
+          .padding($r('app.float.spacing_md'))
+          .backgroundColor(this.col().surface)
+          .borderRadius($r('app.float.radius_md'))
+          .border({ width: 1, color: this.col().divider })
+          .margin({ left: $r('app.float.spacing_lg'), right: $r('app.float.spacing_lg'),
+            top: $r('app.float.spacing_lg') })
+          .onClick(() => { router.pushUrl({ url: 'pages/DevicePage' }) })
+
           // Knowledge base entry
           Row() {
             Text('📚').fontSize(18).margin({ right: $r('app.float.spacing_sm') })

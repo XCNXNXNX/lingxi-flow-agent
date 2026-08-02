@@ -81,7 +81,7 @@ async function trySendNotification(title: string, description: string): Promise<
 
 // Publish a system-level countdown reminder via ReminderAgentKit.
 // Returns the reminderId. Throws if ReminderAgent is unavailable.
-async function publishSystemReminder(title: string, desc: string, minutes: number): Promise<number> {
+export async function publishSystemReminder(title: string, desc: string, minutes: number): Promise<number> {
   const agent: reminderAgentManager.WantAgent = {
     pkgName: 'com.lingxiflow.app',
     abilityName: 'EntryAbility'

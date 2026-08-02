@@ -3,6 +3,7 @@ import { router } from '@kit.ArkUI'
 import { agentCore } from '../engine/AgentCore'
 import { configService } from '../services/ConfigService'
 import { dbService } from '../engine/DatabaseService'
+import { distributedService, TaskStatePayload } from '../services/DistributedService'
 import { generateId } from '../utils/TextFormatter'
 import {
   AgentEvent,
@@ -136,6 +137,7 @@ struct ResultPage {
         })
         this.progress = Math.round(Math.min(this.steps.length / 8, 1) * 100)
         this.saveRun('running', JSON.stringify(this.steps), '')
+        this.syncTaskState(te.name)
       } else if (event.type === 'text') {
         const ae: AgentTextEvent = event as AgentTextEvent
         this.startTypewriter(ae.content)
@@ -143,13 +145,28 @@ struct ResultPage {
       } else if (event.type === 'done') {
         this.finishFlow()
         this.saveRun('done', JSON.stringify(this.steps), this.aiResponse)
+        this.syncTaskState('完成')
       } else if (event.type === 'error') {
         const ae: AgentErrorEvent = event as AgentErrorEvent
         this.startTypewriter('❌ ' + ae.error)
         this.finishFlow()
         this.saveRun('error', JSON.stringify(this.steps), ae.error)
+        this.syncTaskState('出错')
       }
     })
+  }
+
+  // Publish task progress to other devices (手机 → 平板/手表), failures are silent
+  private syncTaskState(currentStep: string): void {
+    const payload: TaskStatePayload = {
+      goal: this.goal,
+      stepIndex: this.steps.length,
+      stepCount: Math.max(this.steps.length, 1),
+      currentStep: currentStep,
+      status: this.flowStatus,
+      updatedAt: new Date().toISOString()
+    }
+    distributedService.publishTaskState(payload)
   }
 
   private async saveRun(status: string, stepsJson: string, result: string): Promise<void> {

@@ -6,6 +6,7 @@ import { dbService } from '../engine/DatabaseService'
 import { agentCore } from '../engine/AgentCore'
 import { ragService } from '../engine/RagService'
 import { taskScheduler } from '../engine/TaskScheduler'
+import { distributedService } from '../services/DistributedService'
 import { ThemeService } from '../utils/ThemeService'
 
 const DOMAIN: number = 0x0000
@@ -19,6 +20,7 @@ export default class EntryAbility extends UIAbility {
       const filesDir: string = this.context.filesDir
       await ragService.init(this.context, filesDir)
       ragService.buildIndexIfNeeded()
+      await distributedService.init(this.context)
       await agentCore.init(this.context, filesDir)
       taskScheduler.start()
       hilog.info(DOMAIN, 'EntryAbility', 'Services initialized')
