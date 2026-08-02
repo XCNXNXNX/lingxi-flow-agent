@@ -19,7 +19,7 @@ export default class EntryAbility extends UIAbility {
       const filesDir: string = this.context.filesDir
       await ragService.init(this.context, filesDir)
       ragService.buildIndexIfNeeded()
-      await agentCore.init(filesDir)
+      await agentCore.init(this.context, filesDir)
       taskScheduler.start()
       hilog.info(DOMAIN, 'EntryAbility', 'Services initialized')
     } catch (e) {

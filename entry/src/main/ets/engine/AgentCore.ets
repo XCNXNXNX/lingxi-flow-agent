@@ -3,6 +3,7 @@
 // Manages: conversation history, API calls, tool execution, message persistence
 import { Logger } from '../utils/Logger'
 import { generateId } from '../utils/TextFormatter'
+import { common } from '@kit.AbilityKit'
 import { ApiClient } from '../services/ApiClient'
 import { ToolRegistry } from './ToolRegistry'
 import { dbService } from './DatabaseService'
@@ -10,7 +11,7 @@ import { configService } from '../services/ConfigService'
 import { ragService } from './RagService'
 import { registerFileTools, initFileTools } from '../tools/FileTools'
 import { registerReminderTools, initReminderTools } from '../tools/ReminderTools'
-import { registerCalendarTools } from '../tools/CalendarTools'
+import { registerCalendarTools, initCalendarTools } from '../tools/CalendarTools'
 import { registerWeatherTools } from '../tools/WeatherTools'
 import { registerWebTools } from '../tools/WebTools'
 import { registerMemoryTools, initMemoryTools } from '../tools/MemoryTools'
@@ -45,6 +46,11 @@ const SYSTEM_PROMPT: string = `你是灵犀(Lingxi Flow)，运行在HarmonyOS上
 - 天气查询：查询指定城市的天气
 - 网页搜索：搜索互联网信息（web_search）、抓取网页正文（web_fetch）
 - 记忆笔记：把重要信息写入长期记忆（memory_write），读取记忆（memory_read），列出记忆（memory_list）
+- 日历管理：创建系统日历日程（calendar_create，含提前10分钟提醒）、查询未来日程（calendar_query）
+
+区分提醒与日程：
+- 用户说"X分钟后/半小时后提醒我" → 用 create_reminder（minutes 参数）
+- 用户说"明天下午3点开会/安排日程" → 用 calendar_create：先 get_current_date/get_current_time 确定当前时间，算出目标时间的毫秒时间戳作为 start_time；若用户说的是相对时间（"1小时后"）则用 minutes_from_now
 
 当用户需要计划或提醒时，你应该主动：
 1. 使用 get_current_date 确认今天日期
@@ -63,7 +69,7 @@ export class AgentCore {
   private toolRegistry: ToolRegistry = new ToolRegistry()
   private initialized: boolean = false
 
-  async init(filesDir: string): Promise<void> {
+  async init(context: common.UIAbilityContext, filesDir: string): Promise<void> {
     if (this.initialized) {
       return
     }
@@ -71,6 +77,7 @@ export class AgentCore {
     initFileTools(filesDir)
     initReminderTools()
     initMemoryTools(filesDir)
+    initCalendarTools(context)
     registerFileTools(this.toolRegistry)
     registerReminderTools(this.toolRegistry)
     registerCalendarTools(this.toolRegistry)
