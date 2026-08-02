@@ -1,0 +1,152 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "灵犀流序 -一句话生成工作流"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "灵犀流序元服务"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "灵犀流序"
+    },
+    {
+      "name": "app_name",
+      "value": "灵犀流序"
+    },
+    {
+      "name": "app_slogan",
+      "value": "一句话生成工作流"
+    },
+    {
+      "name": "btn_start_chat",
+      "value": "开始对话"
+    },
+    {
+      "name": "btn_send",
+      "value": "发送"
+    },
+    {
+      "name": "btn_retry",
+      "value": "重试"
+    },
+    {
+      "name": "btn_back",
+      "value": "返回"
+    },
+    {
+      "name": "hint_input_placeholder",
+      "value": "告诉我你想做什么……"
+    },
+    {
+      "name": "tab_chat",
+      "value": "对话"
+    },
+    {
+      "name": "tab_result",
+      "value": "任务"
+    },
+    {
+      "name": "tab_device",
+      "value": "设备"
+    },
+    {
+      "name": "title_chat",
+      "value": "AI对话"
+    },
+    {
+      "name": "title_result",
+      "value": "工作流结果"
+    },
+    {
+      "name": "title_device",
+      "value": "设备管理"
+    },
+    {
+      "name": "status_connected",
+      "value": "已连接"
+    },
+    {
+      "name": "status_disconnected",
+      "value": "未连接"
+    },
+    {
+      "name": "status_active",
+      "value": "活跃"
+    },
+    {
+      "name": "status_idle",
+      "value": "空闲"
+    },
+    {
+      "name": "task_status_pending",
+      "value": "等待中"
+    },
+    {
+      "name": "task_status_running",
+      "value": "进行中"
+    },
+    {
+      "name": "task_status_completed",
+      "value": "已完成"
+    },
+    {
+      "name": "task_status_failed",
+      "value": "失败"
+    },
+    {
+      "name": "device_phone",
+      "value": "手机"
+    },
+    {
+      "name": "device_watch",
+      "value": "手表"
+    },
+    {
+      "name": "device_tablet",
+      "value": "平板"
+    },
+    {
+      "name": "greeting_title",
+      "value": "你好，我是灵犀"
+    },
+    {
+      "name": "greeting_subtitle",
+      "value": "用自然语言描述你的需求，我来帮你编排工作流"
+    },
+    {
+      "name": "suggestion_1",
+      "value": "整理文件，分享图片"
+    },
+    {
+      "name": "suggestion_2",
+      "value": "提醒我下午3点开会"
+    },
+    {
+      "name": "suggestion_3",
+      "value": "把最近的照片备份"
+    },
+    {
+      "name": "loading_text",
+      "value": "正在分析你的意图..."
+    },
+    {
+      "name": "loading_planning",
+      "value": "正在编排任务序列..."
+    },
+    {
+      "name": "loading_executing",
+      "value": "正在执行工作流..."
+    },
+    {
+      "name": "intent_display_name",
+      "value": "灵犀流序·工作流编排"
+    },
+    {
+      "name": "intent_display_desc",
+      "value": "用自然语言描述需求，自动编排并执行跨设备工作流"
+    }
+  ]
+}

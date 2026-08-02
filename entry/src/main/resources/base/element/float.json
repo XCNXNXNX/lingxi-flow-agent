@@ -1,0 +1,112 @@
+{
+ "float": [
+ {
+ "name": "font_size_title",
+ "value": "24fp"
+ },
+ {
+ "name": "font_size_subtitle",
+ "value": "18fp"
+ },
+ {
+ "name": "font_size_body",
+ "value": "16fp"
+ },
+ {
+ "name": "font_size_caption",
+ "value": "14fp"
+ },
+ {
+ "name": "font_size_small",
+ "value": "12fp"
+ },
+ {
+ "name": "font_size_display",
+ "value": "32fp"
+ },
+ {
+ "name": "spacing_xs",
+ "value": "4vp"
+ },
+ {
+ "name": "spacing_sm",
+ "value": "8vp"
+ },
+ {
+ "name": "spacing_md",
+ "value": "16vp"
+ },
+ {
+ "name": "spacing_lg",
+ "value": "24vp"
+ },
+ {
+ "name": "spacing_xl",
+ "value": "32vp"
+ },
+ {
+ "name": "spacing_xxl",
+ "value": "48vp"
+ },
+ {
+ "name": "radius_xs",
+ "value": "4vp"
+ },
+ {
+ "name": "radius_sm",
+ "value": "8vp"
+ },
+ {
+ "name": "radius_md",
+ "value": "12vp"
+ },
+  {
+  "name": "radius_surface",
+  "value": "14vp"
+  },
+  {
+  "name": "radius_lg",
+  "value": "16vp"
+  },
+ {
+ "name": "radius_xl",
+ "value": "24vp"
+ },
+ {
+ "name": "radius_full",
+ "value": "999vp"
+ },
+ {
+ "name": "icon_size_sm",
+ "value": "16vp"
+ },
+ {
+ "name": "icon_size_md",
+ "value": "24vp"
+ },
+ {
+ "name": "icon_size_lg",
+ "value": "48vp"
+ },
+ {
+ "name": "icon_size_xl",
+ "value": "72vp"
+ },
+ {
+ "name": "card_elevation",
+ "value": "4vp"
+ },
+ {
+ "name": "input_height",
+ "value": "52vp"
+ },
+ {
+ "name": "button_height",
+ "value": "48vp"
+ },
+ {
+ "name": "page_text_font_size",
+ "value": "24fp"
+ }
+ ]
+}
