@@ -3,7 +3,7 @@ import { router } from '@kit.ArkUI'
 import { agentCore } from '../engine/AgentCore'
 import { configService } from '../services/ConfigService'
 import { dbService } from '../engine/DatabaseService'
-import { distributedService, TaskStatePayload } from '../services/DistributedService'
+import { distributedService, TaskStatePayload, LOCAL_DEVICE_ID } from '../services/DistributedService'
 import { generateId } from '../utils/TextFormatter'
 import {
   AgentEvent,
@@ -106,7 +106,8 @@ struct ResultPage {
       // fresh run: reset everything
       this.steps = []
     }
-    this.progress = 0
+    // resumed runs keep their steps - restore the progress bar accordingly
+    this.progress = Math.round(Math.min(this.steps.length / 8, 1) * 100)
     this.inputText = ''
     this.startTime = Date.now()
     this.flowStatus = 'running'
@@ -164,7 +165,8 @@ struct ResultPage {
       stepCount: Math.max(this.steps.length, 1),
       currentStep: currentStep,
       status: this.flowStatus,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      senderId: LOCAL_DEVICE_ID
     }
     distributedService.publishTaskState(payload)
   }

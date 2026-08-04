@@ -5,6 +5,7 @@
 import { distributedDeviceManager } from '@kit.DistributedServiceKit'
 import distributedKVStore from '@ohos.data.distributedKVStore'
 import { abilityAccessCtrl, bundleManager, common, Permissions, PermissionRequestResult } from '@kit.AbilityKit'
+import { deviceInfo } from '@kit.BasicServicesKit'
 import { Logger } from '../utils/Logger'
 import { DeviceInfo, DeviceType, DeviceConnectionStatus } from '../model/Types'
 
@@ -29,6 +30,7 @@ export interface TaskStatePayload {
   currentStep: string
   status: string
   updatedAt: string
+  senderId: string
 }
 
 export interface ReminderCommand {
@@ -36,7 +38,11 @@ export interface ReminderCommand {
   description: string
   minutes: number
   fromDevice: string
+  senderId: string
 }
+
+// Stable per-device id used to filter out self-published messages
+export const LOCAL_DEVICE_ID: string = deviceInfo.udid
 
 function mapDeviceType(type: string): DeviceType {
   const t: string = type.toLowerCase()
@@ -165,10 +171,13 @@ export class DistributedService {
     if (this.kvStore) {
       return this.kvStore
     }
+    if (!this.context) {
+      return null
+    }
     try {
       const config: distributedKVStore.KVManagerConfig = {
         bundleName: 'com.lingxiflow.app',
-        context: this.context!
+        context: this.context
       }
       const kvManager: distributedKVStore.KVManager = distributedKVStore.createKVManager(config)
       const options: distributedKVStore.Options = {
@@ -214,6 +223,10 @@ export class DistributedService {
               store.get(KEY_TASK_STATE).then((value: string | number | boolean | Uint8Array): void => {
                 try {
                   const payload: TaskStatePayload = JSON.parse(String(value)) as TaskStatePayload
+                  // Skip messages published by this device itself (local dataChange fires too)
+                  if (payload.senderId === LOCAL_DEVICE_ID) {
+                    return
+                  }
                   listener(payload)
                 } catch (_e) {
                   listener(null)
@@ -256,6 +269,10 @@ export class DistributedService {
               store.get(KEY_REMINDER_CMD).then((value: string | number | boolean | Uint8Array): void => {
                 try {
                   const cmd: ReminderCommand = JSON.parse(String(value)) as ReminderCommand
+                  // Skip commands published by this device itself
+                  if (cmd.senderId === LOCAL_DEVICE_ID) {
+                    return
+                  }
                   listener(cmd)
                 } catch (_e) {
                   // ignore malformed

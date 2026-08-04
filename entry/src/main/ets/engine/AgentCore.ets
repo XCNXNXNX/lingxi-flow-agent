@@ -29,6 +29,7 @@ import {
   ApiResponse,
   ChatMessage,
   ToolCall,
+  ToolCallFunction,
   ToolCallRecord,
   ToolDefinition,
   ToolResult
@@ -177,7 +178,29 @@ export class AgentCore {
         if (msg.isFromMe) {
           apiMessages.push({ role: 'user', content: msg.content })
         } else {
-          apiMessages.push({ role: 'assistant', content: msg.content || '' })
+          const toolRecords: ToolCallRecord[] | undefined = msg.toolCalls
+          if (toolRecords && toolRecords.length > 0) {
+            // Rebuild assistant tool_calls + tool result messages so the model
+            // keeps full tool context across multi-turn conversations
+            const apiToolCalls: ToolCall[] = []
+            for (let t: number = 0; t < toolRecords.length; t++) {
+              const rec: ToolCallRecord = toolRecords[t]
+              const callId: string = 'call_' + msg.id + '_' + t
+              const fn: ToolCallFunction = { name: rec.name, arguments: rec.input }
+              apiToolCalls.push({ id: callId, type: 'function', function: fn })
+            }
+            apiMessages.push({ role: 'assistant', content: msg.content || null, toolCalls: apiToolCalls })
+            for (let t2: number = 0; t2 < toolRecords.length; t2++) {
+              const rec2: ToolCallRecord = toolRecords[t2]
+              apiMessages.push({
+                role: 'tool',
+                content: rec2.result,
+                toolCallId: 'call_' + msg.id + '_' + t2
+              })
+            }
+          } else {
+            apiMessages.push({ role: 'assistant', content: msg.content || '' })
+          }
         }
       }
 

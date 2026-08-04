@@ -251,6 +251,8 @@ export class RagService {
     } catch (e) {
       Logger.error('RagService', 'buildIndex failed: ' + (e as Error).message)
       this.status = 'fallback'
+      // Rebuild may have wiped the table - retry on next retrieval instead of staying empty
+      this.dirty = true
     }
   }
 

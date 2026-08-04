@@ -13,6 +13,7 @@ interface ReminderItem {
   startTime: number
   description: string
   fired: boolean
+  fallbackTimerId: number
 }
 
 const REMINDER_KV_KEY: string = 'lingxi_reminders'
@@ -24,7 +25,16 @@ export async function initReminderTools(): Promise<void> {
   try {
     const raw: string | null = await dbService.getKV(REMINDER_KV_KEY)
     if (raw && raw.length > 0) {
-      gReminders = JSON.parse(raw) as ReminderItem[]
+      const loaded: ReminderItem[] = JSON.parse(raw) as ReminderItem[]
+      for (let i: number = 0; i < loaded.length; i++) {
+        const item: ReminderItem = loaded[i]
+        // In-app fallback timers do not survive restarts - mark them as fired
+        if (!item.fired && item.fallbackTimerId >= 0) {
+          item.fired = true
+        }
+        item.fallbackTimerId = -1
+        gReminders.push(item)
+      }
     }
   } catch (_e) {
     gReminders = []
@@ -120,7 +130,7 @@ export function registerReminderTools(registry: ToolRegistry): void {
       // 1) System-level reminder (fires on time, works in background)
       try {
         const reminderId: number = await publishSystemReminder(title, desc, minutes)
-        gReminders.push({ id: reminderId, title: title, startTime: fireAt, description: desc, fired: false })
+        gReminders.push({ id: reminderId, title: title, startTime: fireAt, description: desc, fired: false, fallbackTimerId: -1 })
         await saveReminders()
         Logger.info('ReminderTools', 'scheduled via ReminderAgent: ' + title + ' in ' + minutes + 'min')
         return '已创建提醒: ' + title + '（' + minutes + ' 分钟后提醒你）'
@@ -129,10 +139,8 @@ export function registerReminderTools(registry: ToolRegistry): void {
       }
 
       // 2) Fallback: in-app timer (app must stay alive)
-      const item: ReminderItem = { id: Date.now(), title: title, startTime: fireAt, description: desc, fired: false }
-      gReminders.push(item)
-      await saveReminders()
-      setTimeout((): void => {
+      const item: ReminderItem = { id: Date.now(), title: title, startTime: fireAt, description: desc, fired: false, fallbackTimerId: -1 }
+      const timerId: number = setTimeout((): void => {
         trySendNotification(title, desc.length > 0 ? desc : title)
         const filtered: ReminderItem[] = []
         for (let i: number = 0; i < gReminders.length; i++) {
@@ -147,6 +155,9 @@ export function registerReminderTools(registry: ToolRegistry): void {
         gReminders = filtered
         saveReminders()
       }, minutes * 60000)
+      item.fallbackTimerId = timerId
+      gReminders.push(item)
+      await saveReminders()
       return '已创建提醒: ' + title + '（' + minutes + ' 分钟后提醒你）'
     }
   )
@@ -198,10 +209,15 @@ export function registerReminderTools(registry: ToolRegistry): void {
       let removed: boolean = false
       for (let i: number = 0; i < gReminders.length; i++) {
         if (gReminders[i].title === title) {
+          const target: ReminderItem = gReminders[i]
           try {
-            await reminderAgentManager.cancelReminder(gReminders[i].id)
+            await reminderAgentManager.cancelReminder(target.id)
           } catch (_e) {
             Logger.warn('ReminderTools', 'cancelReminder failed: ' + (_e as Error).message)
+          }
+          // Cancel the in-app fallback timer as well (it would still fire otherwise)
+          if (target.fallbackTimerId >= 0) {
+            clearTimeout(target.fallbackTimerId)
           }
           removed = true
         }

@@ -1,7 +1,7 @@
 // DevicePage - 跨设备协同
 // 设备发现 + 任务进度跨设备同步 + 提醒指令分发（手机输入 → 手表提醒）
 import { router, promptAction } from '@kit.ArkUI'
-import { distributedService, TaskStatePayload, ReminderCommand } from '../services/DistributedService'
+import { distributedService, TaskStatePayload, ReminderCommand, LOCAL_DEVICE_ID } from '../services/DistributedService'
 import { publishSystemReminder } from '../tools/ReminderTools'
 import { ThemeStyle, ThemeColors, getThemeColors } from '../utils/ThemeService'
 import { DeviceInfo, DeviceType, DeviceConnectionStatus } from '../model/Types'
@@ -80,7 +80,8 @@ struct DevicePage {
       title: title,
       description: '来自手机灵犀的提醒',
       minutes: minutes,
-      fromDevice: '本机'
+      fromDevice: '本机',
+      senderId: LOCAL_DEVICE_ID
     }
     await distributedService.publishReminderCommand(cmd)
     this.sentCount++

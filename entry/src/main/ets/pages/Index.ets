@@ -33,6 +33,11 @@ struct Index {
     this.startBreathe()
     setTimeout(() => { this.showSplash = false }, 400)
     setTimeout(() => { this.startFlowType() }, 600)
+    // 小艺意图唤起（foreground 模式先进 Index）→ 跳转对话页消费预设
+    const preset: string | undefined = AppStorage.get<string>('intentPresetText')
+    if (preset && preset.length > 0) {
+      router.pushUrl({ url: 'pages/ChatPage' })
+    }
   }
 
   aboutToDisappear(): void {

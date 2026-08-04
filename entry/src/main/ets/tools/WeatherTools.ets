@@ -14,9 +14,9 @@ interface WeatherData {
 }
 
 async function fetchWeather(city: string): Promise<WeatherData> {
+  const req: http.HttpRequest = http.createHttp()
   try {
     const url: string = 'https://wttr.in/' + encodeURIComponent(city) + '?format=j1&lang=zh'
-    const req: http.HttpRequest = http.createHttp()
     const resp: http.HttpResponse = await req.request(url, {
       method: http.RequestMethod.GET,
       connectTimeout: 5000,
@@ -37,6 +37,7 @@ async function fetchWeather(city: string): Promise<WeatherData> {
       }
     }
   } catch (e) {
+    req.destroy()
     Logger.warn('WeatherTools', 'fetch failed: ' + (e as Error).message)
   }
   return { city: city, temp: '?', weather: '未知', humidity: '?', wind: '?' }
