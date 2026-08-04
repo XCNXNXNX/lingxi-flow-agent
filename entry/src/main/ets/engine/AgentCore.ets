@@ -15,6 +15,7 @@ import { registerCalendarTools, initCalendarTools } from '../tools/CalendarTools
 import { registerWeatherTools } from '../tools/WeatherTools'
 import { registerWebTools } from '../tools/WebTools'
 import { registerMemoryTools, initMemoryTools } from '../tools/MemoryTools'
+import { registerTaskTools } from '../tools/TaskTools'
 import { mcpClient } from '../services/McpClient'
 import {
   AgentEvent,
@@ -48,6 +49,7 @@ const SYSTEM_PROMPT: string = `你是灵犀(Lingxi Flow)，运行在HarmonyOS上
 - 网页搜索：搜索互联网信息（web_search）、抓取网页正文（web_fetch）
 - 记忆笔记：把重要信息写入长期记忆（memory_write），读取记忆（memory_read），列出记忆（memory_list）
 - 日历管理：创建系统日历日程（calendar_create，含提前10分钟提醒）、查询未来日程（calendar_query）
+- 定时任务：创建周期/一次性后台任务（task_create），列出任务（task_list），取消任务（task_cancel）
 
 区分提醒与日程：
 - 用户说"X分钟后/半小时后提醒我" → 用 create_reminder（minutes 参数）
@@ -85,6 +87,7 @@ export class AgentCore {
     registerWeatherTools(this.toolRegistry)
     registerWebTools(this.toolRegistry)
     registerMemoryTools(this.toolRegistry)
+    registerTaskTools(this.toolRegistry)
     try {
       await mcpClient.initAndRegister(this.toolRegistry)
     } catch (e) {

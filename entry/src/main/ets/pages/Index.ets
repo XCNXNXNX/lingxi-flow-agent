@@ -27,12 +27,14 @@ struct Index {
   private flowTimer: number = -1
   private snowTimer: number = -1
   private breatheTimer: number = -1
+  private destroyed: boolean = false
 
   aboutToAppear(): void {
+    this.destroyed = false
     this.initParticles()
     this.startBreathe()
-    setTimeout(() => { this.showSplash = false }, 400)
-    setTimeout(() => { this.startFlowType() }, 600)
+    setTimeout(() => { if (!this.destroyed) { this.showSplash = false } }, 400)
+    setTimeout(() => { if (!this.destroyed) { this.startFlowType() } }, 600)
     // 小艺意图唤起（foreground 模式先进 Index）→ 跳转对话页消费预设
     const preset: string | undefined = AppStorage.get<string>('intentPresetText')
     if (preset && preset.length > 0) {
@@ -41,6 +43,7 @@ struct Index {
   }
 
   aboutToDisappear(): void {
+    this.destroyed = true
     if (this.flowTimer >= 0) { clearInterval(this.flowTimer) }
     if (this.snowTimer >= 0) { clearInterval(this.snowTimer) }
     if (this.breatheTimer >= 0) { clearInterval(this.breatheTimer) }

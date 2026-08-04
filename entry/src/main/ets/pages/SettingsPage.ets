@@ -42,6 +42,7 @@ struct SettingsPage {
       { name: '提醒功能', desc: '创建/列出/取消提醒，系统通知', count: 3, active: true },
       { name: '网页搜索', desc: 'DuckDuckGo 搜索 + 网页抓取', count: 2, active: true },
       { name: '记忆笔记', desc: 'Markdown 笔记读写', count: 3, active: true },
+      { name: '周期任务', desc: '定时/周期执行 AI 任务', count: 3, active: true },
       { name: '日历管理', desc: '系统日历日程创建/查询 + 时间/日期/星期', count: 5, active: true }
     ]
   }

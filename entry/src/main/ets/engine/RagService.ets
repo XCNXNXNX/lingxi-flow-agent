@@ -404,6 +404,9 @@ export class RagService {
           if (!n.endsWith('.md') && !n.endsWith('.txt')) {
             continue
           }
+          if (n === 'note.txt') {
+            continue
+          }
           try {
             const st: fileIo.Stat = fileIo.statSync(paths[i] + '/' + n)
             sig += n + ':' + st.size + ':' + st.mtime + ';'

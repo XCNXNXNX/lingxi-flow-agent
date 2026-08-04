@@ -50,8 +50,10 @@ struct ChatPage {
   private chatId: string = 'default'
   private scroller: Scroller = new Scroller()
   private typewriterTimer: number = -1
+  private destroyed: boolean = false
 
   async aboutToAppear(): Promise<void> {
+    this.destroyed = false
     this.chatId = generateId()
     await this.refreshState()
     await this.loadConversations()
@@ -61,7 +63,9 @@ struct ChatPage {
       AppStorage.setOrCreate<string>('intentPresetText', '')
       this.inputText = preset
       setTimeout((): void => {
-        this.sendMessage()
+        if (!this.destroyed) {
+          this.sendMessage()
+        }
       }, 800)
     }
   }
@@ -72,6 +76,7 @@ struct ChatPage {
   }
 
   aboutToDisappear(): void {
+    this.destroyed = true
     this.stopTypewriter()
     voiceService.cancelListening()
     voiceService.stopSpeaking()
@@ -191,7 +196,7 @@ struct ChatPage {
 
   scrollToBottom(): void {
     setTimeout((): void => {
-      if (this.messages.length > 0) {
+      if (!this.destroyed && this.messages.length > 0) {
         this.scroller.scrollToIndex(this.messages.length - 1)
       }
     }, 100)
@@ -648,7 +653,7 @@ struct ChatPage {
           .animation({ duration: 180, curve: Curve.EaseOut })
           .onClick(() => {
             this.sendScale = 0.85
-            setTimeout(() => { this.sendScale = 1 }, 150)
+            setTimeout(() => { if (!this.destroyed) { this.sendScale = 1 } }, 150)
             this.sendMessage()
           })
         }

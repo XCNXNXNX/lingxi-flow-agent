@@ -106,8 +106,8 @@ struct ResultPage {
       // fresh run: reset everything
       this.steps = []
     }
-    // resumed runs keep their steps - restore the progress bar accordingly
-    this.progress = Math.round(Math.min(this.steps.length / 8, 1) * 100)
+    // Progress grows with actual steps, capped at 95% until done (never fills early)
+    this.progress = this.computeProgress()
     this.inputText = ''
     this.startTime = Date.now()
     this.flowStatus = 'running'
@@ -136,7 +136,7 @@ struct ResultPage {
           status: te.isError ? TaskStatus.FAILED : TaskStatus.COMPLETED,
           result: te.result
         })
-        this.progress = Math.round(Math.min(this.steps.length / 8, 1) * 100)
+        this.progress = this.computeProgress()
         this.saveRun('running', JSON.stringify(this.steps), '')
         this.syncTaskState(te.name)
       } else if (event.type === 'text') {
@@ -192,11 +192,18 @@ struct ResultPage {
     }
   }
 
+  // Progress: grows with steps, caps at 95% while running; finishFlow sets 100
+  private computeProgress(): number {
+    const denominator: number = Math.max(8, this.steps.length)
+    return Math.min(Math.round(this.steps.length / denominator * 100), 95)
+  }
+
   finishFlow(): void {
     clearInterval(this.timer); this.timer = -1
     this.elapsed = Date.now() - this.startTime
     this.flowStatus = 'done'; this.allDone = true
     this.executing = false
+    this.progress = 100
   }
 
   startTypewriter(fullText: string): void {
