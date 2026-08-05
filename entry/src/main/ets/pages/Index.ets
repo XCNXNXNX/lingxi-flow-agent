@@ -185,7 +185,7 @@ struct Index {
         .width('100%')
         .height('100%')
         .objectFit(ImageFit.Cover)
-        .opacity(0.10)
+        .opacity(0.22)
         .zIndex(-1)
 
       // Snow particles

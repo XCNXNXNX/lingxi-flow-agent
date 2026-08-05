@@ -357,6 +357,14 @@ struct ResultPage {
 
       if (this.steps.length > 0 || this.flowStatus !== 'idle') {
         Column() {
+          // 完成插图（任务成功后展示）
+          if (this.allDone && this.aiResponse.length > 0) {
+            Image($r('app.media.illustration_success'))
+              .width(200).height(133)
+              .objectFit(ImageFit.Contain)
+              .margin({ top: $r('app.float.spacing_md') })
+          }
+
           if (this.aiResponse.length > 0) {
             Column() {
               MarkdownText({

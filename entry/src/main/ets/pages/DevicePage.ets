@@ -129,7 +129,10 @@ struct DevicePage {
           if (!this.granted) {
             // 未授权引导
             Column() {
-              Text('🔗').fontSize(44).opacity(0.6)
+              Image($r('app.media.icon_device_1'))
+                .width(96).height(96)
+                .objectFit(ImageFit.Contain)
+                .opacity(0.85)
               Text('开启跨设备协同')
                 .fontSize($r('app.float.font_size_body')).fontColor(this.col().textPrimary)
                 .fontWeight(FontWeight.Medium).margin({ top: $r('app.float.spacing_sm') })
@@ -149,14 +152,24 @@ struct DevicePage {
             .border({ width: 1, color: this.col().divider })
           } else {
             // 设备列表
-            Text('附近设备')
-              .fontSize($r('app.float.font_size_caption')).fontColor(this.col().textTertiary)
-              .fontWeight(FontWeight.Bold)
-              .width('100%').margin({ bottom: $r('app.float.spacing_sm') })
+            Row() {
+              Text('附近设备')
+                .fontSize($r('app.float.font_size_caption')).fontColor(this.col().textTertiary)
+                .fontWeight(FontWeight.Bold)
+              Blank()
+              Image($r('app.media.icon_device_2'))
+                .width(22).height(22)
+                .objectFit(ImageFit.Contain)
+                .opacity(0.7)
+            }
+            .width('100%').margin({ bottom: $r('app.float.spacing_sm') })
 
             if (this.devices.length === 0) {
               Column() {
-                Text('📡').fontSize(36).opacity(0.4)
+                Image($r('app.media.icon_device_1'))
+                  .width(72).height(72)
+                  .objectFit(ImageFit.Contain)
+                  .opacity(0.5)
                 Text('未发现设备')
                   .fontSize($r('app.float.font_size_body')).fontColor(this.col().textTertiary)
                   .margin({ top: $r('app.float.spacing_sm') })

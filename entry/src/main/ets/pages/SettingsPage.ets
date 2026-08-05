@@ -235,7 +235,10 @@ struct SettingsPage {
 
           // Device collaboration entry
           Row() {
-            Text('🔗').fontSize(18).margin({ right: $r('app.float.spacing_sm') })
+            Image($r('app.media.icon_device_1'))
+              .width(20).height(20)
+              .objectFit(ImageFit.Contain)
+              .margin({ right: $r('app.float.spacing_sm') })
             Column() {
               Text('跨设备协同')
                 .fontSize($r('app.float.font_size_body'))

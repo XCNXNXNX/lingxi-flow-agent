@@ -624,7 +624,8 @@ struct ChatPage {
         // Input
         Row() {
           Button({ type: ButtonType.Circle }) {
-            Text(this.isListening ? '⏹' : '🎤').fontSize(16).fontColor('#FFFFFF')
+            Image(this.isListening ? $r('app.media.voice_2') : $r('app.media.voice_1'))
+              .width(24).height(24)
           }
           .width(44).height(44)
           .backgroundColor(this.isListening ? '#EF4444' : this.col().surfaceVariant)
