@@ -7,7 +7,7 @@ import { agentCore } from '../engine/AgentCore'
 import { ragService } from '../engine/RagService'
 import { taskScheduler } from '../engine/TaskScheduler'
 import { distributedService } from '../services/DistributedService'
-import { ThemeService } from '../utils/ThemeService'
+import { ThemeService, ThemeStyle } from '../utils/ThemeService'
 
 const DOMAIN: number = 0x0000
 
@@ -35,6 +35,15 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
+    // 导航条适配：窗口背景色跟随主题，与页面背景融合（避免底部导航条颜色突兀）
+    try {
+      const mainWindow: window.Window = windowStage.getMainWindowSync()
+      const style: ThemeStyle = ThemeService.getStyle()
+      const bgColor: string = style === 'lobster' ? '#0e1015' : '#F8F9FE'
+      mainWindow.setWindowBackgroundColor(bgColor)
+    } catch (e) {
+      hilog.error(DOMAIN, 'EntryAbility', 'setWindowBackgroundColor failed: %{public}s', JSON.stringify(e))
+    }
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'EntryAbility', 'Failed: %{public}s', JSON.stringify(err))
