@@ -131,7 +131,7 @@ struct Index {
 
             Text(this.flowText)
               .fontSize(30)
-              .fontColor(this.col().accent)
+              .fontColor(this.col().textOnPrimary)
               .fontWeight(FontWeight.Bold)
               .fontFamily('HarmonyOS Sans')
               .letterSpacing(2)
