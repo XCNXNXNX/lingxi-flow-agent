@@ -84,7 +84,7 @@ export function getReminders(): ReminderItem[] {
   return gReminders.slice(0)
 }
 
-const SCHEMA_CREATE_REMINDER: Record<string, Object> = JSON.parse('{"type":"object","properties":{"title":{"type":"string","description":"Reminder title, e.g. 睡觉"},"description":{"type":"string","description":"Reminder description"},"datetime":{"type":"string","description":"ABSOLUTE fire time. Formats: \"20:50\" (today; tomorrow if already passed) or \"2026-08-08 20:50\". ALWAYS use this when the user names a specific time (8点50/下午3点/明天早上7点). Do NOT compute minutes yourself - the tool converts it to the correct delay internally."},"minutes":{"type":"number","description":"Delay in minutes. ONLY for relative requests like \"remind me in X minutes\"."}},"required":["title"]}') as Record<string, Object>
+const SCHEMA_CREATE_REMINDER: Record<string, Object> = JSON.parse('{"type":"object","properties":{"title":{"type":"string","description":"Reminder title, e.g. 睡觉"},"description":{"type":"string","description":"Reminder description"},"datetime":{"type":"string","description":"ABSOLUTE fire time. Formats: HH:mm like 20:50 (today; tomorrow if already passed) or 2026-08-08 20:50. ALWAYS use this when the user names a specific time like 8点50 or 下午3点. Do NOT compute minutes yourself - the tool converts it to the correct delay internally."},"minutes":{"type":"number","description":"Delay in minutes. ONLY for relative requests like remind me in X minutes."}},"required":["title"]}') as Record<string, Object>
 
 const SCHEMA_LIST_REMINDERS: Record<string, Object> = JSON.parse('{"type":"object","properties":{},"required":[]}') as Record<string, Object>
 
