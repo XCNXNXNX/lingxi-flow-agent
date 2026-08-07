@@ -27,16 +27,16 @@ const DEFAULT_EMBED_URL = 'https://api.siliconflow.cn/v1/embeddings'
 
 // One-tap provider presets: users don't need to fill base URLs manually
 export const PROVIDER_PRESETS: ProviderPreset[] = [
-  { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat', note: '国内直连 · 性价比高' },
+  { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat', note: '国内直连 · 高峰期排队较慢' },
   { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', note: '需网络代理' },
-  { name: '通义千问', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus', note: '阿里云 · 国内直连' },
-  { name: 'Kimi', baseUrl: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k', note: '月之暗面 · 国内直连' },
-  { name: '智谱 GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash', note: '国内直连 · 有免费档' },
+  { name: '通义千问', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-turbo', note: '阿里云 · ⚡响应快' },
+  { name: 'Kimi', baseUrl: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k', note: '月之暗面 · ⚡响应快' },
+  { name: '智谱 GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash', note: '⚡响应快 · 免费档' },
   { name: 'SiliconFlow', baseUrl: 'https://api.siliconflow.cn/v1', model: 'deepseek-ai/DeepSeek-V3', note: '硅基流动 · 聚合多模型' },
   { name: '百度千帆', baseUrl: 'https://qianfan.baidubce.com/v2', model: 'ernie-4.0-turbo-8k', note: '国内直连' },
-  { name: '腾讯混元', baseUrl: 'https://api.hunyuan.cloud.tencent.com/v1', model: 'hunyuan-lite', note: '国内直连 · 有免费档' },
-  { name: '火山方舟', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', model: 'doubao-1-5-pro-32k-250115', note: '豆包 · 需在控制台建推理接入点' },
-  { name: 'Ollama 本地', baseUrl: 'http://127.0.0.1:11434/v1', model: 'qwen2.5:7b', note: '本地模型 · 免费离线' }
+  { name: '腾讯混元', baseUrl: 'https://api.hunyuan.cloud.tencent.com/v1', model: 'hunyuan-lite', note: '⚡响应快 · 免费档' },
+  { name: '火山方舟', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', model: 'doubao-1-5-pro-32k-250115', note: '豆包 · 需建推理接入点' },
+  { name: 'Ollama 本地', baseUrl: 'http://127.0.0.1:11434/v1', model: 'qwen2.5:7b', note: '⚡最快 · 免费离线' }
 ]
 
 export class ConfigService {

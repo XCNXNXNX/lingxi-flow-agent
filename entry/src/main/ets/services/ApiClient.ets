@@ -178,7 +178,7 @@ export class ApiClient {
             'Authorization': 'Bearer ' + this.config.apiKey
           },
           extraData: JSON.stringify(body),
-          connectTimeout: 30000,
+          connectTimeout: 60000,
           readTimeout: 180000
         })
 
@@ -341,7 +341,7 @@ export class ApiClient {
           resolved = true
           clearInterval(watchdog)
           httpRequest.destroy()
-          reject(new Error('模型排队超时（180 秒未收到数据，服务繁忙），请稍后重试'))
+          reject(new Error('模型排队超时（180 秒未收到数据）。服务繁忙或该服务商高峰期排队，建议：1) 在 API 设置切换到 ⚡响应快 的服务商（智谱 GLM/通义千问/Kimi）；2) 稍后重试'))
         }
       }, 15000)
 
@@ -444,8 +444,8 @@ export class ApiClient {
           'Authorization': 'Bearer ' + this.config.apiKey
         },
         extraData: JSON.stringify(body),
-        connectTimeout: 30000,
-        readTimeout: 120000
+        connectTimeout: 60000,
+        readTimeout: 180000
       }).then((response: http.HttpResponse): void => {
         if (response.responseCode !== 200) {
           if (resolved) {
