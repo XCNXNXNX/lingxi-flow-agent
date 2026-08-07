@@ -102,21 +102,24 @@ export function registerTaskTools(registry: ToolRegistry): void {
     'task_create',
     'Create a scheduled AI task. Use when the user wants something done repeatedly (every X minutes, e.g. 每30分钟提醒我喝水) or once in the background. The task runs through the AI agent automatically.',
     SCHEMA_CREATE,
-    taskCreate
+    taskCreate,
+    '定时任务'
   )
 
   registry.registerTool(
     'task_list',
     'List all active scheduled tasks with their ids and intervals.',
     SCHEMA_LIST,
-    taskList
+    taskList,
+    '定时任务'
   )
 
   registry.registerTool(
     'task_cancel',
     'Cancel a scheduled task by id (prefix accepted, from task_list).',
     SCHEMA_CANCEL,
-    taskCancel
+    taskCancel,
+    '定时任务'
   )
 
   Logger.info('TaskTools', 'Registered 3 task tools')

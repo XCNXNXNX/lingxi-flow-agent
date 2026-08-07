@@ -1,10 +1,26 @@
-import { router } from '@kit.ArkUI'
+import { router, promptAction } from '@kit.ArkUI'
 import { ThemeService, ThemeStyle, ThemeColors, getThemeColors } from '../utils/ThemeService'
 import { dbService } from '../engine/DatabaseService'
+import { agentCore } from '../engine/AgentCore'
+import { configService } from '../services/ConfigService'
+import { SkillGroup, SkillToolInfo } from '../engine/ToolRegistry'
 
 interface MemoryItem {
   key: string
   value: string
+}
+
+// 提示词模板预设
+const PROMPT_TEMPLATES: PromptTemplate[] = [
+  { name: '默认助理', prompt: '' },
+  { name: '学习助手', prompt: '你是灵犀，一位耐心的学习伙伴。回答时先给结论再展开解释，善于用例子和类比帮助理解，遇到难题会拆解成小步骤引导。学生问作业时，先引导思考而不是直接给答案。' },
+  { name: '效率达人', prompt: '你是灵犀，一位雷厉风行的效率专家。收到任务立刻规划最短路径并执行，回复简洁直接、少客套，善于把模糊需求转化为可执行清单。' },
+  { name: '贴心管家', prompt: '你是灵犀，一位细心周到的生活管家。主动记住用户的习惯与偏好（用记忆笔记保存），在合适的时候提醒用户，回复温暖亲切。' }
+]
+
+interface PromptTemplate {
+  name: string
+  prompt: string
 }
 
 @Entry
@@ -15,11 +31,19 @@ struct SettingsPage {
   @State showMemories: boolean = false
   @State showSkills: boolean = false
   @State memoryText: string = ''
-  @State skillList: SkillEntry[] = []
+  @State skillGroups: SkillGroup[] = []
+  @State promptText: string = ''
+  @State promptSaved: boolean = false
 
   aboutToAppear(): void {
     this.loadSkills()
     this.loadMemoriesData()
+    this.loadPrompt()
+  }
+
+  async loadSkills(): Promise<void> {
+    const groups: SkillGroup[] = agentCore.getToolRegistry().getSkillGroups()
+    this.skillGroups = groups
   }
 
   async loadMemoriesData(): Promise<void> {
@@ -36,15 +60,48 @@ struct SettingsPage {
     } catch (e) { this.memories = [] }
   }
 
-  loadSkills(): void {
-    this.skillList = [
-      { name: '基础读写', desc: '创建/读取/写入/删除/搜索/复制/粘贴文件', count: 8, active: true },
-      { name: '提醒功能', desc: '创建/列出/取消提醒，系统通知', count: 3, active: true },
-      { name: '网页搜索', desc: 'DuckDuckGo 搜索 + 网页抓取', count: 2, active: true },
-      { name: '记忆笔记', desc: 'Markdown 笔记读写', count: 3, active: true },
-      { name: '周期任务', desc: '定时/周期执行 AI 任务', count: 3, active: true },
-      { name: '日历管理', desc: '系统日历日程创建/查询 + 时间/日期/星期', count: 5, active: true }
-    ]
+  toggleTool(name: string, enabled: boolean): void {
+    agentCore.getToolRegistry().setToolEnabled(name, enabled)
+    this.loadSkills()
+  }
+
+  getEnabledToolCount(): number {
+    let count: number = 0
+    for (let i: number = 0; i < this.skillGroups.length; i++) {
+      const g: SkillGroup = this.skillGroups[i]
+      for (let j: number = 0; j < g.tools.length; j++) {
+        if (g.tools[j].enabled) {
+          count++
+        }
+      }
+    }
+    return count
+  }
+
+  async loadPrompt(): Promise<void> {
+    this.promptText = await configService.getSystemPrompt()
+  }
+
+  applyTemplate(name: string): void {
+    for (let i: number = 0; i < PROMPT_TEMPLATES.length; i++) {
+      if (PROMPT_TEMPLATES[i].name === name) {
+        this.promptText = PROMPT_TEMPLATES[i].prompt
+        return
+      }
+    }
+  }
+
+  async savePrompt(): Promise<void> {
+    await configService.saveSystemPrompt(this.promptText.trim())
+    this.promptSaved = true
+    promptAction.showToast({ message: '提示词已保存，新对话生效', duration: 2000 })
+    setTimeout(() => { this.promptSaved = false }, 2000)
+  }
+
+  async resetPrompt(): Promise<void> {
+    this.promptText = ''
+    await configService.saveSystemPrompt('')
+    promptAction.showToast({ message: '已恢复默认提示词', duration: 2000 })
   }
 
   async saveMemory(): Promise<void> {
@@ -176,14 +233,15 @@ struct SettingsPage {
               top: $r('app.float.spacing_sm') })
           }
 
-          // Skills section
+          // Skills section (dynamic, from ToolRegistry)
           Row() {
             Text('技能')
               .fontSize($r('app.float.font_size_body'))
               .fontColor(this.col().textPrimary)
               .fontWeight(FontWeight.Bold)
               .layoutWeight(1)
-            Text(this.showSkills ? '收起' : '查看')
+            Text(this.getEnabledToolCount() + '/' + this.skillGroups.length + ' 组 · ' +
+              (this.showSkills ? '收起' : '管理'))
               .fontSize($r('app.float.font_size_small'))
               .fontColor(this.col().accent)
               .onClick(() => { this.showSkills = !this.showSkills })
@@ -193,36 +251,42 @@ struct SettingsPage {
             top: $r('app.float.spacing_lg') })
 
           if (this.showSkills) {
-            Text('AI 可自主调用以下技能')
+            Text('自由增删能力：关闭的技能将不再提供给 AI，即时生效')
               .fontSize($r('app.float.font_size_caption'))
               .fontColor(this.col().textTertiary)
               .width('100%')
               .padding({ left: $r('app.float.spacing_lg'), top: $r('app.float.spacing_sm'),
                 bottom: $r('app.float.spacing_sm') })
 
-            ForEach(this.skillList, (skill: SkillEntry): void => {
-              Row() {
-                Circle()
-                  .width(8).height(8)
-                  .fill(skill.active ? '#047857' : this.col().textTertiary)
-                  .margin({ right: $r('app.float.spacing_sm') })
-
-                Column() {
-                  Text(skill.name)
+            ForEach(this.skillGroups, (group: SkillGroup) => {
+              Column() {
+                Row() {
+                  Text(group.name)
                     .fontSize($r('app.float.font_size_body'))
                     .fontColor(this.col().textPrimary).fontWeight(FontWeight.Medium)
-                  Text(skill.desc)
-                    .fontSize($r('app.float.font_size_small'))
-                    .fontColor(this.col().textTertiary).margin({ top: 2 })
+                  Blank()
+                  Text(group.tools.length + ' 工具')
+                    .fontSize($r('app.float.font_size_caption'))
+                    .fontColor(this.col().textTertiary)
+                    .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+                    .backgroundColor(this.col().surfaceVariant)
+                    .borderRadius($r('app.float.radius_sm'))
                 }
-                .alignItems(HorizontalAlign.Start).layoutWeight(1)
+                .width('100%').margin({ bottom: $r('app.float.spacing_xs') })
 
-                Text(skill.count + ' 工具')
-                  .fontSize($r('app.float.font_size_caption'))
-                  .fontColor(skill.active ? this.col().accent : this.col().textTertiary)
-                  .padding({ left: 8, right: 8, top: 2, bottom: 2 })
-                  .backgroundColor(this.col().surfaceVariant)
-                  .borderRadius($r('app.float.radius_sm'))
+                ForEach(group.tools, (tool: SkillToolInfo) => {
+                  Row() {
+                    Text(tool.name)
+                      .fontSize($r('app.float.font_size_small'))
+                      .fontColor(tool.enabled ? this.col().textPrimary : this.col().textTertiary)
+                      .layoutWeight(1)
+                      .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+                    Toggle({ type: ToggleType.Switch, isOn: tool.enabled })
+                      .selectedColor(this.col().accent)
+                      .onChange((isOn: boolean): void => { this.toggleTool(tool.name, isOn) })
+                  }
+                  .width('100%').padding({ top: 2, bottom: 2 })
+                })
               }
               .width('100%')
               .padding($r('app.float.spacing_md'))
@@ -232,6 +296,75 @@ struct SettingsPage {
               .margin({ top: $r('app.float.spacing_sm') })
             })
           }
+
+          // Custom system prompt section
+          Row() {
+            Text('AI 提示词')
+              .fontSize($r('app.float.font_size_body'))
+              .fontColor(this.col().textPrimary)
+              .fontWeight(FontWeight.Bold)
+              .layoutWeight(1)
+            Text('自定义角色设定，新对话生效')
+              .fontSize($r('app.float.font_size_caption'))
+              .fontColor(this.col().textTertiary)
+          }
+          .width('100%')
+          .padding({ left: $r('app.float.spacing_lg'), right: $r('app.float.spacing_lg'),
+            top: $r('app.float.spacing_lg') })
+
+          Column() {
+            Scroll() {
+              TextArea({ text: this.promptText, placeholder: '在这里描述你想要的 AI 人设与行为准则…（留空 = 默认助理）' })
+                .width('100%').height(140)
+                .fontSize($r('app.float.font_size_small'))
+                .fontColor(this.col().textPrimary)
+                .placeholderColor(this.col().textTertiary)
+                .backgroundColor(this.col().surfaceVariant)
+                .borderRadius($r('app.float.radius_md'))
+                .padding(8)
+                .onChange((v: string): void => { this.promptText = v })
+            }
+            .width('100%').height(140)
+
+            Row() {
+              Text('模板')
+                .fontSize($r('app.float.font_size_caption')).fontColor(this.col().textTertiary)
+              ForEach(PROMPT_TEMPLATES, (tpl: PromptTemplate) => {
+                Text(tpl.name)
+                  .fontSize($r('app.float.font_size_caption'))
+                  .fontColor(this.promptText === tpl.prompt ? this.col().accent : this.col().textSecondary)
+                  .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+                  .backgroundColor(this.col().surfaceVariant)
+                  .borderRadius($r('app.float.radius_sm'))
+                  .margin({ left: $r('app.float.spacing_xs') })
+                  .onClick(() => { this.applyTemplate(tpl.name) })
+              })
+            }
+            .width('100%').margin({ top: $r('app.float.spacing_sm') })
+
+            Row() {
+              Button('恢复默认')
+                .fontSize($r('app.float.font_size_caption'))
+                .fontColor(this.col().textSecondary)
+                .backgroundColor(this.col().surfaceVariant)
+                .borderRadius($r('app.float.radius_sm')).height(32)
+                .onClick(() => { this.resetPrompt() })
+              Button('保存')
+                .fontSize($r('app.float.font_size_caption')).fontColor('#FFFFFF')
+                .backgroundColor(this.col().accent)
+                .borderRadius($r('app.float.radius_sm')).height(32)
+                .margin({ left: $r('app.float.spacing_sm') })
+                .onClick(() => { this.savePrompt() })
+            }
+            .width('100%').justifyContent(FlexAlign.End).margin({ top: $r('app.float.spacing_sm') })
+          }
+          .width('100%')
+          .padding($r('app.float.spacing_md'))
+          .backgroundColor(this.col().surface)
+          .borderRadius($r('app.float.radius_md'))
+          .border({ width: 1, color: this.col().divider })
+          .margin({ left: $r('app.float.spacing_lg'), right: $r('app.float.spacing_lg'),
+            top: $r('app.float.spacing_sm') })
 
           // Device collaboration entry
           Row() {
@@ -332,11 +465,4 @@ struct SettingsPage {
       await ThemeService.setStyle(key)
     })
   }
-}
-
-interface SkillEntry {
-  name: string
-  desc: string
-  count: number
-  active: boolean
 }

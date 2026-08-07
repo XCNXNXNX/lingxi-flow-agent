@@ -39,17 +39,8 @@ import {
 const MAX_ITERATIONS: number = 15
 const CONTEXT_WINDOW: number = 30
 
-const SYSTEM_PROMPT: string = `你是灵犀(Lingxi Flow)，运行在HarmonyOS上的智能个人助理。
-
-你可以使用以下工具：
-- 文件操作：创建目录、写入文件、读取文件、列出目录、删除文件、搜索文件、复制文件、粘贴文件
-- 提醒管理：创建提醒、列出提醒、取消提醒
-- 时间日期：获取当前时间、日期、星期
-- 天气查询：查询指定城市的天气
-- 网页搜索：搜索互联网信息（web_search）、抓取网页正文（web_fetch）
-- 记忆笔记：把重要信息写入长期记忆（memory_write），读取记忆（memory_read），列出记忆（memory_list）
-- 日历管理：创建系统日历日程（calendar_create，含提前10分钟提醒）、查询未来日程（calendar_query）
-- 定时任务：创建周期/一次性后台任务（task_create），列出任务（task_list），取消任务（task_cancel）
+// 基础提示词：角色 + 使用引导（工具清单由注册表动态生成）
+const DEFAULT_BASE_PROMPT: string = `你是灵犀(Lingxi Flow)，运行在HarmonyOS上的智能个人助理。
 
 区分提醒与日程：
 - 用户说"X分钟后/半小时后提醒我" → 用 create_reminder（minutes 参数）
@@ -66,6 +57,8 @@ const SYSTEM_PROMPT: string = `你是灵犀(Lingxi Flow)，运行在HarmonyOS上
 当用户告诉你他的偏好、重要事项、需要长期记住的信息时，应使用 memory_write 保存；下次相关对话时先 memory_read 回顾。
 使用工具时请逐步思考，一次只调用必要的工具。完成后请总结你所做的事情。
 请用中文回复，语气温暖体贴，像家人一样关心用户。`
+
+const TOOL_PROMPT_PREFIX: string = '\n\n当前你可使用的工具如下（按技能分组）：\n'
 
 export class AgentCore {
   private apiClient: ApiClient | null = null
@@ -93,6 +86,9 @@ export class AgentCore {
     } catch (e) {
       Logger.warn('AgentCore', 'MCP init failed: ' + (e as Error).message)
     }
+    await this.toolRegistry.loadDisabledState()
+    Logger.info('AgentCore', 'initialized with ' + this.toolRegistry.getToolCount() +
+      ' tools (' + this.toolRegistry.getEnabledToolCount() + ' enabled)')
 
     this.initialized = true
     Logger.info('AgentCore', 'initialized with ' + this.toolRegistry.getToolDefinitions().length + ' tools')
@@ -100,6 +96,10 @@ export class AgentCore {
 
   async hasApiKey(): Promise<boolean> {
     return await configService.hasApiKey()
+  }
+
+  getToolRegistry(): ToolRegistry {
+    return this.toolRegistry
   }
 
   private async ensureApiClient(): Promise<ApiClient> {
@@ -160,9 +160,13 @@ export class AgentCore {
       // Load conversation history
       const history: ChatMessage[] = await dbService.getMessages(chatId, CONTEXT_WINDOW)
 
-      // Build API messages array with RAG-augmented system prompt
+      // Build API messages array with user prompt + dynamic tool list + RAG context
       const apiMessages: ApiMessage[] = []
-      let systemContent: string = SYSTEM_PROMPT
+      let systemContent: string = await configService.getSystemPrompt()
+      if (systemContent.length === 0) {
+        systemContent = DEFAULT_BASE_PROMPT
+      }
+      systemContent = systemContent + TOOL_PROMPT_PREFIX + this.toolRegistry.getEnabledToolSummary()
       try {
         const ragChunks: string[] = await ragService.retrieve(userMessage, 3)
         if (ragChunks.length > 0) {
@@ -207,8 +211,8 @@ export class AgentCore {
         }
       }
 
-      // Get tool definitions
-      const allTools: ToolDefinition[] = this.toolRegistry.getToolDefinitions()
+      // Get enabled tool definitions
+      const allTools: ToolDefinition[] = this.toolRegistry.getEnabledToolDefinitions()
 
       // ReAct loop
       let iterations: number = 0

@@ -13,6 +13,7 @@ const KEY_TEMPERATURE = 'temperature'
 const KEY_EMBED_KEY = 'embedding_key'
 const KEY_EMBED_URL = 'embedding_url'
 const KEY_MCP_URL = 'mcp_url'
+const KEY_SYSTEM_PROMPT = 'system_prompt'
 
 const DEFAULT_BASE_URL = 'https://api.deepseek.com/v1'
 const DEFAULT_MODEL = 'deepseek-chat'
@@ -115,6 +116,17 @@ export class ConfigService {
 
  async saveMcpUrl(url: string): Promise<void> {
  await this.pref!.put(KEY_MCP_URL, url)
+ await this.pref!.flush()
+ }
+
+ // --- Custom system prompt (user persona) ---
+
+ async getSystemPrompt(): Promise<string> {
+ return await this.pref!.get(KEY_SYSTEM_PROMPT, '') as string
+ }
+
+ async saveSystemPrompt(prompt: string): Promise<void> {
+ await this.pref!.put(KEY_SYSTEM_PROMPT, prompt)
  await this.pref!.flush()
  }
 

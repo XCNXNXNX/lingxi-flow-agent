@@ -105,21 +105,24 @@ export function registerMemoryTools(registry: ToolRegistry): void {
     'memory_write',
     'Write or update a persistent memory note. Use this to remember important user information (preferences, facts, todo items) that should persist across conversations. Notes are Markdown files.',
     SCHEMA_WRITE,
-    memoryWrite
+    memoryWrite,
+    '记忆笔记'
   )
 
   registry.registerTool(
     'memory_read',
     'Read a persistent memory note by name. Use this when you need information the user saved earlier or across conversations.',
     SCHEMA_READ,
-    memoryRead
+    memoryRead,
+    '记忆笔记'
   )
 
   registry.registerTool(
     'memory_list',
     'List all saved memory notes with sizes.',
     SCHEMA_LIST,
-    memoryList
+    memoryList,
+    '记忆笔记'
   )
 
   Logger.info('MemoryTools', 'Registered 3 memory tools')

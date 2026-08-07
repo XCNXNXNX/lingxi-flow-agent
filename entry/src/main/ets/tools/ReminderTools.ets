@@ -159,7 +159,8 @@ export function registerReminderTools(registry: ToolRegistry): void {
       gReminders.push(item)
       await saveReminders()
       return '已创建提醒: ' + title + '（' + minutes + ' 分钟后提醒你）'
-    }
+    },
+    '提醒服务'
   )
 
   registry.registerTool(
@@ -197,7 +198,8 @@ export function registerReminderTools(registry: ToolRegistry): void {
           d.getMinutes().toString().padStart(2, '0') + ' 触发）\n'
       }
       return out
-    }
+    },
+    '提醒服务'
   )
 
   registry.registerTool(
@@ -234,7 +236,8 @@ export function registerReminderTools(registry: ToolRegistry): void {
         return '未找到提醒: ' + title
       }
       return '已取消提醒: ' + title
-    }
+    },
+    '提醒服务'
   )
 
   Logger.info('ReminderTools', 'Registered 3 reminder tools')

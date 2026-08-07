@@ -133,7 +133,8 @@ export class McpClient {
         schema,
         async (input: Record<string, Object>): Promise<string> => {
           return await this.callTool(originalName, input)
-        }
+        },
+        'MCP 远程工具'
       )
     }
     Logger.info('McpClient', 'registered ' + this.state.tools.length + ' remote tools')

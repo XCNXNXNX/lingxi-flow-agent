@@ -46,7 +46,8 @@ export function registerFileTools(registry: ToolRegistry): void {
       const full: string = resolvePath(path)
       await fileIo.mkdir(full, true)
       return '已创建文件夹: ' + path
-    }
+    },
+    '文件管理'
   )
 
   registry.registerTool(
@@ -73,7 +74,8 @@ export function registerFileTools(registry: ToolRegistry): void {
       fileIo.closeSync(file)
 
       return '已写入 ' + content.length + ' 字符到: ' + path
-    }
+    },
+    '文件管理'
   )
 
   registry.registerTool(
@@ -89,7 +91,8 @@ export function registerFileTools(registry: ToolRegistry): void {
       } catch (e) {
         return '读取文件失败: ' + path + ' - ' + (e as Error).message
       }
-    }
+    },
+    '文件管理'
   )
 
   registry.registerTool(
@@ -112,7 +115,8 @@ export function registerFileTools(registry: ToolRegistry): void {
         result += '  ...(共' + files.length + '项)'
       }
       return result
-    }
+    },
+    '文件管理'
   )
 
   registry.registerTool(
@@ -124,7 +128,8 @@ export function registerFileTools(registry: ToolRegistry): void {
       const full: string = resolvePath(path)
       await fileIo.unlink(full)
       return '已删除: ' + path
-    }
+    },
+    '文件管理'
   )
 
   registry.registerTool(
@@ -153,7 +158,8 @@ export function registerFileTools(registry: ToolRegistry): void {
         out += '  ' + (i + 1) + '. ' + results[i] + '\n'
       }
       return out
-    }
+    },
+    '文件管理'
   )
 
   Logger.info('FileTools', 'Registered 6 file tools')
@@ -169,7 +175,8 @@ let gClipboard: string = ''
       const full: string = resolvePath(path)
       gClipboard = full
       return '已复制到剪贴板: ' + path
-    }
+    },
+    '文件管理'
   )
 
   registry.registerTool(
@@ -195,7 +202,8 @@ let gClipboard: string = ''
       } catch (e) {
         return '粘贴失败: ' + (e as Error).message
       }
-    }
+    },
+    '文件管理'
   )
 
   Logger.info('FileTools', 'Registered 2 more copy/paste tools')

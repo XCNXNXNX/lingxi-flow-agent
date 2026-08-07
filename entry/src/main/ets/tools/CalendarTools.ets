@@ -153,7 +153,8 @@ export function registerCalendarTools(registry: ToolRegistry): void {
       const m: string = now.getMinutes().toString().padStart(2, '0')
       const s: string = now.getSeconds().toString().padStart(2, '0')
       return '当前时间: ' + h + ':' + m + ':' + s
-    }
+    },
+    '日历与时间'
   )
 
   registry.registerTool(
@@ -167,7 +168,8 @@ export function registerCalendarTools(registry: ToolRegistry): void {
       const d: string = now.getDate().toString().padStart(2, '0')
       const wd: string = WEEKDAYS[now.getDay()]
       return '今天是 ' + y + '年' + mo + '月' + d + '日 ' + wd
-    }
+    },
+    '日历与时间'
   )
 
   registry.registerTool(
@@ -177,21 +179,24 @@ export function registerCalendarTools(registry: ToolRegistry): void {
     async (_input: Record<string, Object>): Promise<string> => {
       const now: Date = new Date()
       return '今天是' + WEEKDAYS[now.getDay()]
-    }
+    },
+    '日历与时间'
   )
 
   registry.registerTool(
     'calendar_create',
     'Create a system calendar event with reminder. Use for meetings/appointments/schedules. For absolute times (下午3点/明天) compute start_time epoch ms from get_current_time first; for relative times use minutes_from_now.',
     SCHEMA_CREATE,
-    calendarCreate
+    calendarCreate,
+    '日历与时间'
   )
 
   registry.registerTool(
     'calendar_query',
     'Query upcoming calendar events (next N days, default 7). Use when the user asks what is on their schedule.',
     SCHEMA_QUERY,
-    calendarQuery
+    calendarQuery,
+    '日历与时间'
   )
 
   Logger.info('CalendarTools', 'Registered 5 calendar tools')

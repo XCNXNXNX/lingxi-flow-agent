@@ -221,14 +221,16 @@ export function registerWebTools(registry: ToolRegistry): void {
     'web_search',
     'Search the web (Bing, fallback DuckDuckGo). Returns titles, links and snippets. Use when the user asks about news, facts, information or anything outside local files.',
     SCHEMA_SEARCH,
-    webSearch
+    webSearch,
+    '网页搜索'
   )
 
   registry.registerTool(
     'web_fetch',
     'Fetch the text content of a web page (HTML tags stripped). Use with a URL from web_search to read full article content.',
     SCHEMA_FETCH,
-    webFetch
+    webFetch,
+    '网页搜索'
   )
 
   Logger.info('WebTools', 'Registered 2 web tools')

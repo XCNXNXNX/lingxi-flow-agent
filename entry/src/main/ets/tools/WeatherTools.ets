@@ -53,7 +53,8 @@ export function registerWeatherTools(registry: ToolRegistry): void {
       const w: WeatherData = await fetchWeather(city)
       return w.city + ' 天气:\n  温度: ' + w.temp + '°C\n  天气: ' + w.weather +
         '\n  湿度: ' + w.humidity + '%\n  风力: ' + w.wind
-    }
+    },
+    '天气服务'
   )
 
   Logger.info('WeatherTools', 'Registered 1 weather tool')
