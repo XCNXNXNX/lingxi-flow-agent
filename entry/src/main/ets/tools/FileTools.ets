@@ -80,7 +80,7 @@ export function registerFileTools(registry: ToolRegistry): void {
 
   registry.registerTool(
     'read_file',
-    'Read the text content of a FILE (not a directory). If the path is a directory it fails - use list_files to see directory contents instead.',
+    'Read the text content of a FILE. Fails on directories - use list_files to see directory contents.',
     SCHEMA_READ,
     async (input: Record<string, Object>): Promise<string> => {
       const path: string = input['path'] as string || ''
@@ -102,7 +102,7 @@ export function registerFileTools(registry: ToolRegistry): void {
 
   registry.registerTool(
     'list_files',
-    'List the CONTENTS of a DIRECTORY (folder). Every entry is marked with [目录] for folders and [文件] for files, so you can pick the right tool next: use read_file only on [文件] entries, list_files only on [目录] entries.',
+    'List the CONTENTS of a DIRECTORY. Entries are marked [目录] folder / [文件] file: use read_file only on [文件], list_files only on [目录].',
     SCHEMA_LIST,
     async (input: Record<string, Object>): Promise<string> => {
       const path: string = input['path'] as string || ''

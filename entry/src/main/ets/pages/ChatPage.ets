@@ -33,6 +33,7 @@ struct ChatPage {
   @State messages: DisplayMessage[] = []
   @State pagedMessages: DisplayMessage[] = []
   @State page: number = 1
+  @State thinkSeconds: number = 0
   @State inputText: string = ''
   @State isRunning: boolean = false
   @State hasApiKey: boolean = false
@@ -58,6 +59,7 @@ struct ChatPage {
   private chatId: string = 'default'
   private scroller: Scroller = new Scroller()
   private typewriterTimer: number = -1
+  private thinkTimer: number = -1
   private destroyed: boolean = false
   // Stream throttling: merge rapid stream/reasoning deltas into one UI update
   private uiThrottleTimer: number = -1
@@ -95,6 +97,10 @@ struct ChatPage {
     if (this.uiThrottleTimer >= 0) {
       clearTimeout(this.uiThrottleTimer)
       this.uiThrottleTimer = -1
+    }
+    if (this.thinkTimer >= 0) {
+      clearInterval(this.thinkTimer)
+      this.thinkTimer = -1
     }
     voiceService.cancelListening()
     voiceService.stopSpeaking()
@@ -318,6 +324,33 @@ struct ChatPage {
       pairId: pairId
     })
     this.syncPage()
+    // Thinking stopwatch: shows elapsed seconds so waiting is visible
+    this.thinkSeconds = 0
+    if (this.thinkTimer >= 0) {
+      clearInterval(this.thinkTimer)
+    }
+    this.thinkTimer = setInterval((): void => {
+      if (!this.isRunning || this.destroyed) {
+        clearInterval(this.thinkTimer)
+        this.thinkTimer = -1
+        return
+      }
+      this.thinkSeconds++
+      const ti: number = this.messages.findIndex((m: DisplayMessage): boolean => m.id === thinkingId)
+      if (ti >= 0) {
+        const tm: DisplayMessage = this.messages[ti]
+        // Only overwrite the placeholder while no content/reasoning arrived yet
+        if (tm.isThinking && (tm.content === '思考中...' || tm.content.startsWith('思考中…'))) {
+          this.messages[ti] = {
+            id: tm.id, content: '思考中… ' + this.thinkSeconds + 's',
+            isFromMe: tm.isFromMe, timestamp: tm.timestamp,
+            toolCalls: tm.toolCalls, reasoning: tm.reasoning,
+            isThinking: true, pairId: pairId
+          }
+          this.syncPage()
+        }
+      }
+    }, 1000)
     this.scrollToBottom()
 
     if (!this.hasApiKey) {
@@ -429,9 +462,17 @@ struct ChatPage {
         const idx: number = this.messages.findIndex((m: DisplayMessage): boolean => m.id === this.pendingThinkingId)
         if (idx >= 0) {
           const ex: DisplayMessage = this.messages[idx]
+          // Live thinking visibility: show reasoning content while streaming it,
+          // so the user sees progress instead of a frozen '思考中...'
+          let liveContent: string = this.pendingContent.length > 0 ? this.pendingContent : ex.content
+          if ((liveContent.length === 0 || liveContent.startsWith('思考中')) && this.pendingReasoning.length > 0) {
+            liveContent = '💭 ' + (this.pendingReasoning.length > 150
+              ? this.pendingReasoning.substring(0, 150) + '…'
+              : this.pendingReasoning)
+          }
           this.messages[idx] = {
             id: ex.id,
-            content: this.pendingContent.length > 0 ? this.pendingContent : ex.content,
+            content: liveContent,
             isFromMe: false,
             timestamp: ex.timestamp,
             toolCalls: ex.toolCalls,
@@ -447,6 +488,10 @@ struct ChatPage {
 
   startTypewriter(thinkingId: string, fullText: string, pairId: string, toolCalls?: ToolCallRecord[], reasoning?: string): void {
     this.stopTypewriter()
+    if (this.thinkTimer >= 0) {
+      clearInterval(this.thinkTimer)
+      this.thinkTimer = -1
+    }
     const idx: number = this.messages.findIndex((m: DisplayMessage): boolean => m.id === thinkingId)
     if (idx < 0) { return }
     const base: DisplayMessage = this.messages[idx]
