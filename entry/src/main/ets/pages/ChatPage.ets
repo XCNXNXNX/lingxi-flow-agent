@@ -770,12 +770,28 @@ struct ChatPage {
               .onChange((v: string): void => { this.embedKey = v })
               .margin({ top: $r('app.float.spacing_xs'), bottom: $r('app.float.spacing_md') })
 
-            this.settingsField('MCP 服务器（可选，重启生效）', this.col())
+            this.settingsField('MCP 服务器（可选，保存后重启生效）', this.col())
             TextInput({ text: this.mcpUrl, placeholder: 'http://192.168.x.x:8080/mcp（远程工具）' })
               .fontColor(this.col().textPrimary).placeholderColor(this.col().textTertiary)
               .backgroundColor(this.col().surfaceVariant).borderRadius($r('app.float.radius_sm'))
               .onChange((v: string): void => { this.mcpUrl = v })
-              .margin({ top: $r('app.float.spacing_xs'), bottom: $r('app.float.spacing_md') })
+              .margin({ top: $r('app.float.spacing_xs'), bottom: $r('app.float.spacing_sm') })
+
+            // 一键预设：鸿蒙官方开发者知识 MCP
+            Row() {
+              Text('快捷预设')
+                .fontSize($r('app.float.font_size_caption')).fontColor(this.col().textTertiary)
+                .margin({ right: $r('app.float.spacing_sm') })
+              Button('鸿蒙官方文档')
+                .fontSize($r('app.float.font_size_caption')).fontColor('#FFFFFF')
+                .backgroundColor(this.col().accent)
+                .borderRadius($r('app.float.radius_sm')).height(28)
+                .onClick(() => {
+                  this.mcpUrl = 'https://connect-api.cloud.huawei.com/api/developerknowledge/mcp'
+                  promptAction.showToast({ message: '已填入鸿蒙官方文档 MCP，保存后重启生效', duration: 2500 })
+                })
+            }
+            .width('100%').margin({ bottom: $r('app.float.spacing_md') })
 
             this.settingsField('模型', this.col())
             TextInput({ text: this.apiModel, placeholder: 'deepseek-chat' })
