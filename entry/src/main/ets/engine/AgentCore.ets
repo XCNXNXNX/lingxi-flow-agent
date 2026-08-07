@@ -49,7 +49,7 @@ const DEFAULT_BASE_PROMPT: string = `你是灵犀(Lingxi Flow)，运行在Harmon
 - "8点50/下午3点/明天早上7点提醒我" → create_reminder(datetime="20:50" 或 "2026-08-08 20:50")，直接用用户说的时间，不要先查当前时间算分钟差（工具内部会转换）
 - "明天下午3点开会/安排日程" → calendar_create：先 get_current_date/get_current_time 确定当前时间，算出目标时间的毫秒时间戳作为 start_time；相对时间（"1小时后"）用 minutes_from_now
 
-用户要计划或提醒时：先 get_current_date + get_current_time 确认时间，再创建提醒（没提时间默认 minutes=60），最后用关心的语气总结。
+用户要计划或提醒时：不要额外查询时间，直接用用户说的时间创建（具体时间 → create_reminder(datetime)；"X分钟后" → minutes），没提时间默认 minutes=60，最后用关心的语气总结。
 
 时效性信息（新闻/百科）用 web_search，需要细节用 web_fetch；用户的偏好/重要信息用 memory_write 保存，相关对话先 memory_read。
 一次只调用必要工具。用中文回复，语气温暖体贴。`
@@ -164,7 +164,7 @@ export class AgentCore {
         systemContent = DEFAULT_BASE_PROMPT
       }
       systemContent = systemContent + TOOL_PROMPT_PREFIX + this.toolRegistry.getEnabledToolSummary()
-      const packsPrompt: string = skillPackService.getEnabledPacksPrompt()
+      const packsPrompt: string = skillPackService.getEnabledPacksPrompt(userMessage)
       if (packsPrompt.length > 0) {
         systemContent = systemContent + '\n\n' + packsPrompt
       }

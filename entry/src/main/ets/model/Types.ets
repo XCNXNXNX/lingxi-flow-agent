@@ -285,6 +285,7 @@ export interface SkillPack {
   prompt: string
   requires: string[]
   enabled: boolean
+  keywords: string[]
 }
 
 export class PageParams {

@@ -22,7 +22,8 @@ const BUILTIN_PACKS: SkillPack[] = [
     tags: ['效率'],
     prompt: '技能「每日简报」：用户说"生成今日简报"时：1) get_current_date 确认日期；2) get_weather 查天气；3) calendar_query 查日程；4) write_file 写入"今日简报.md"；5) 告知文件位置。',
     requires: ['get_current_date', 'get_weather', 'calendar_query', 'write_file'],
-    enabled: true
+    enabled: true,
+    keywords: ['简报'],
   },
   {
     schemaVersion: 1,
@@ -34,7 +35,8 @@ const BUILTIN_PACKS: SkillPack[] = [
     tags: ['办公'],
     prompt: '技能「会议助手」：用户说"安排会议/开会"时：1) 确认时间地点；2) calendar_create 建日程；3) create_reminder 设提前10分钟提醒；4) write_file 建"会议纪要-主题.md"模板；5) 汇报。',
     requires: ['calendar_create', 'create_reminder', 'write_file', 'get_current_date'],
-    enabled: true
+    enabled: true,
+    keywords: ['会议', '开会', '纪要'],
   },
   {
     schemaVersion: 1,
@@ -46,7 +48,8 @@ const BUILTIN_PACKS: SkillPack[] = [
     tags: ['效率', '健康'],
     prompt: '技能「番茄专注」：用户说"开始番茄钟"时：create_reminder 设25分钟专注提醒，到时再设5分钟休息提醒，汇报计划。',
     requires: ['create_reminder', 'get_current_time'],
-    enabled: true
+    enabled: true,
+    keywords: ['番茄', '番茄钟', '专注'],
   },
   {
     schemaVersion: 1,
@@ -58,7 +61,8 @@ const BUILTIN_PACKS: SkillPack[] = [
     tags: ['生活'],
     prompt: '技能「天气管家」：问天气时 get_weather 查询（没给城市先 memory_read 找常用城市，找不到则询问），给温度/穿衣建议；用户明确常用城市时 memory_write 记住。',
     requires: ['get_weather', 'memory_read', 'memory_write'],
-    enabled: true
+    enabled: true,
+    keywords: ['天气', '气温', '下雨', '降温', '穿衣'],
   },
   {
     schemaVersion: 1,
@@ -70,7 +74,8 @@ const BUILTIN_PACKS: SkillPack[] = [
     tags: ['资讯'],
     prompt: '技能「今日新闻」：用户说"今日新闻"时：1) 判断是否指定领域（科技/财经/体育/国际/娱乐/健康）；2) web_search 权威媒体（综合:site:news.cn、site:people.com.cn、site:cctv.com；科技:site:ithome.com、site:36kr.com；财经:site:yicai.com、site:caixin.com；体育:site:sports.cctv.com；国际:site:huanqiu.com；娱乐:site:ent.people.com.cn；健康:site:health.people.com.cn）；3) 重要新闻 web_fetch 抓原文；4) 输出"标题+一句话摘要+来源"，先列3-5条重点；5) memory_write 记用户常看领域。',
     requires: ['web_search', 'web_fetch', 'memory_write', 'memory_read'],
-    enabled: true
+    enabled: true,
+    keywords: ['新闻', '要闻', '资讯', '头条'],
   },
   {
     schemaVersion: 1,
@@ -82,7 +87,8 @@ const BUILTIN_PACKS: SkillPack[] = [
     tags: ['生活', '旅行'],
     prompt: '技能「出行助手」：用户说"去XX/旅行"时：1) get_weather 查目的地天气；2) web_search 查攻略（交通/景点/门票/美食）；3) 输出行程（日期/交通/每日安排/美食）；4) write_file 存"出行计划-目的地.md"；5) 问是否要出发提醒（create_reminder）。',
     requires: ['get_weather', 'get_current_date', 'web_search', 'write_file', 'create_reminder'],
-    enabled: true
+    enabled: true,
+    keywords: ['旅行', '旅游', '出行', '攻略'],
   },
   {
     schemaVersion: 1,
@@ -94,7 +100,8 @@ const BUILTIN_PACKS: SkillPack[] = [
     tags: ['健康'],
     prompt: '技能「健康管家」：用户说"健康/喝水/久坐"时：1) memory_read 看健康目标；2) create_reminder 设喝水(60分钟)/起身(90分钟)提醒；3) 健康知识用 web_search 查权威源(site:health.people.com.cn)；4) 打卡用 memory_write 记录；5) 汇总建议。',
     requires: ['create_reminder', 'memory_read', 'memory_write', 'web_search', 'get_current_time'],
-    enabled: true
+    enabled: true,
+    keywords: ['健康', '喝水', '久坐', '养生', '健身'],
   },
   {
     schemaVersion: 1,
@@ -106,7 +113,8 @@ const BUILTIN_PACKS: SkillPack[] = [
     tags: ['财经'],
     prompt: '技能「财经速递」：用户说"股市/财经/汇率"时：web_search 查 site:finance.sina.com.cn 今日A股、site:yicai.com 财经快讯；输出大盘概况+板块热点+重要新闻2-3条+汇率；结尾加"不构成投资建议"。',
     requires: ['web_search', 'web_fetch'],
-    enabled: true
+    enabled: true,
+    keywords: ['股市', '大盘', '财经', '汇率', '股票', '基金'],
   },
   {
     schemaVersion: 1,
@@ -118,7 +126,8 @@ const BUILTIN_PACKS: SkillPack[] = [
     tags: ['娱乐'],
     prompt: '技能「影视推荐」：用户说"电影/推荐"时：1) 确认口味（可 memory_read）；2) web_search 查豆瓣(site:movie.douban.com 热映/高分)；3) 推荐3-5部：片名+评分+简介+平台；4) memory_write 记口味。',
     requires: ['web_search', 'memory_read', 'memory_write'],
-    enabled: true
+    enabled: true,
+    keywords: ['电影', '影视', '好看'],
   },
   {
     schemaVersion: 1,
@@ -130,7 +139,8 @@ const BUILTIN_PACKS: SkillPack[] = [
     tags: ['生活'],
     prompt: '技能「美食菜谱」：用户说"做饭/菜谱"时：确认食材或口味，web_search 查 site:xiachufang.com 菜谱，输出2-3道菜：菜名+食材+步骤+用时。',
     requires: ['web_search'],
-    enabled: true
+    enabled: true,
+    keywords: ['菜谱', '做饭', '吃什么', '美食'],
   },
   {
     schemaVersion: 1,
@@ -142,7 +152,8 @@ const BUILTIN_PACKS: SkillPack[] = [
     tags: ['效率', '健康'],
     prompt: '技能「睡前仪式」：用户说"晚安/睡前"时：1) memory_read 回顾今天；2) 写今日总结+明日计划；3) create_reminder 设明早提醒；4) memory_write 保存；5) 道晚安。',
     requires: ['memory_read', 'memory_write', 'create_reminder', 'get_current_time'],
-    enabled: true
+    enabled: true,
+    keywords: ['晚安', '睡觉', '睡前'],
   },
   {
     schemaVersion: 1,
@@ -154,7 +165,8 @@ const BUILTIN_PACKS: SkillPack[] = [
     tags: ['效率'],
     prompt: '技能「灵感速记」：用户说"记一下/灵感/待办"时：memory_write 存"类型：内容"并提炼关键词；待办类问时间后 create_reminder 提醒；回复"已记下"。',
     requires: ['memory_write', 'create_reminder'],
-    enabled: true
+    enabled: true,
+    keywords: ['记一下', '记下来', '灵感', '待办', '备忘'],
   }
 ]
 
@@ -190,11 +202,26 @@ export class SkillPackService {
     return this.packs.slice(0)
   }
 
-  getEnabledPacksPrompt(): string {
+  getEnabledPacksPrompt(userMessage: string): string {
+    // ON-DEMAND injection: only inject the full skill instructions when the user
+    // message matches the skill's trigger keywords. Injecting all 12 skills on
+    // every request made the model prefill ~1600 extra chars and 'consider'
+    // irrelevant skills each turn - a major latency + cost driver.
     let out: string = ''
     for (let i: number = 0; i < this.packs.length; i++) {
       const p: SkillPack = this.packs[i]
-      if (p.enabled && p.prompt.length > 0) {
+      if (!p.enabled || p.prompt.length === 0) {
+        continue
+      }
+      const kws: string[] = p.keywords && p.keywords.length > 0 ? p.keywords : []
+      let matched: boolean = kws.length === 0
+      for (let j: number = 0; j < kws.length; j++) {
+        if (userMessage.indexOf(kws[j]) >= 0) {
+          matched = true
+          break
+        }
+      }
+      if (matched) {
         out += '【技能包：' + p.displayName + '】' + p.prompt + '\n'
       }
     }
@@ -307,7 +334,8 @@ export class SkillPackService {
       tags: (obj['tags'] as string[]) || [],
       prompt: prompt,
       requires: (obj['requires'] as string[]) || [],
-      enabled: (obj['enabled'] as boolean) !== false
+      enabled: (obj['enabled'] as boolean) !== false,
+      keywords: (obj['keywords'] as string[]) || []
     }
     return pack
   }
