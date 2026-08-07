@@ -326,6 +326,11 @@ export class ApiClient {
     const decoder: util.TextDecoder = new util.TextDecoder('utf-8')
     const toolCallMap: Map<number, ToolCall> = new Map()
 
+    // Latency telemetry: pin down WHERE the time goes (queue vs prefill vs stream)
+    const reqStartAt: number = Date.now()
+    let firstByteAt: number = 0
+    let firstByteLogged: boolean = false
+
     let buffer: string = ''
     let accText: string = ''
     let accReasoning: string = ''
@@ -345,11 +350,12 @@ export class ApiClient {
           clearInterval(watchdog)
           return
         }
-        if (Date.now() - lastDataAt > 180000) {
+        if (Date.now() - lastDataAt > 300000) {
           resolved = true
           clearInterval(watchdog)
           httpRequest.destroy()
-          reject(new Error('模型排队超时（180 秒未收到数据）。服务繁忙或该服务商高峰期排队，建议：1) 在 API 设置切换到 ⚡响应快 的服务商（智谱 GLM/通义千问/Kimi）；2) 稍后重试'))
+          Logger.warn('ApiClient', 'STREAM queue timeout at ' + ((Date.now() - reqStartAt) / 1000).toFixed(1) + 's')
+          reject(new Error('模型排队超时（300 秒未收到数据）。服务端可能高峰排队（不同 API Key 服务等级不同），建议：1) 换一个 API Key 试试；2) 在 API 设置切换其他服务商；3) 真机测试（模拟器网络可能慢）'))
         }
       }, 15000)
 
@@ -360,6 +366,10 @@ export class ApiClient {
         resolved = true
         clearInterval(watchdog)
         httpRequest.destroy()
+        const totalMs: number = Date.now() - reqStartAt
+        Logger.info('ApiClient', 'STREAM done in ' + (totalMs / 1000).toFixed(1) + 's' +
+          ' firstByte=' + (firstByteAt > 0 ? ((firstByteAt - reqStartAt) / 1000).toFixed(1) + 's' : 'NEVER') +
+          ' text=' + accText.length + ' reasoning=' + accReasoning.length)
         const toolCalls: ToolCall[] = []
         toolCallMap.forEach((tc: ToolCall): void => {
           toolCalls.push(tc)
@@ -390,6 +400,11 @@ export class ApiClient {
 
       httpRequest.on('dataReceive', (data: ArrayBuffer): void => {
         lastDataAt = Date.now()
+        if (!firstByteLogged) {
+          firstByteLogged = true
+          firstByteAt = lastDataAt
+          Logger.info('ApiClient', 'STREAM first byte after ' + ((firstByteAt - reqStartAt) / 1000).toFixed(1) + 's')
+        }
         buffer += decoder.decodeWithStream(new Uint8Array(data))
         let idx: number = buffer.indexOf('\n')
         while (idx >= 0) {
