@@ -218,6 +218,8 @@ export class AgentCore {
       // Eager tool calling results: tool_call_id -> in-flight promise, shared across
       // iterations so a stream fallback to non-streaming never re-executes a tool
       const eagerResults: Map<string, Promise<ToolResult>> = new Map()
+      // Adaptive thinking opt-out: only retry once per conversation
+      let clientOptOutDone: boolean = false
 
       // ReAct loop
       let iterations: number = 0
@@ -272,12 +274,48 @@ export class AgentCore {
           } catch (e) {
             const errMsg: string = (e as Error).message
             if (errMsg.indexOf('排队超时') >= 0) {
-              // Queue timeout: retrying non-stream would just queue AGAIN (double wait).
-              // Fail fast so the user sees the error instead of waiting minutes silently.
-              throw e as Error
+              // Queue timeout. First suspect: some gateways/proxies hang on the
+              // thinking param - retry the stream WITHOUT it before giving up.
+              if (!clientOptOutDone) {
+                clientOptOutDone = true
+                Logger.warn('AgentCore', 'queue timeout, retrying stream without thinking param')
+                client.optOutThinking()
+                response = await client.sendMessageStream(apiMessages, allTools,
+                  (text: string, reason: string, reasoningText: string): void => {
+                    if (reasoningText.length > 0) {
+                      const rEvent: AgentReasoningEvent = { type: 'reasoning', content: reasoningText }
+                      onEvent(rEvent)
+                    }
+                    if (reason.length === 0) {
+                      const streamEvent: AgentStreamEvent = { type: 'stream', content: text }
+                      onEvent(streamEvent)
+                    }
+                  },
+                  (toolCall: ToolCall): void => {
+                    try {
+                      const p: Promise<ToolResult> = this.toolRegistry.executeTool(
+                        toolCall.function.name, toolCall.function.arguments, toolCall.id)
+                      eagerResults.set(toolCall.id, p)
+                      p.catch((_e2: Error): void => {
+                        // errors surface at round end
+                      })
+                    } catch (e2) {
+                      const errResult2: ToolResult = {
+                        toolCallId: toolCall.id,
+                        content: 'Error: ' + (e2 as Error).message,
+                        isError: true
+                      }
+                      eagerResults.set(toolCall.id, Promise.resolve(errResult2))
+                    }
+                  })
+              } else {
+                // Already retried without thinking - fail fast so the user can act
+                throw e as Error
+              }
+            } else {
+              Logger.warn('AgentCore', 'stream failed, retrying non-stream: ' + errMsg)
+              response = await client.sendMessage(apiMessages, allTools)
             }
-            Logger.warn('AgentCore', 'stream failed, retrying non-stream: ' + errMsg)
-            response = await client.sendMessage(apiMessages, allTools)
           }
         } else {
           response = await client.sendMessage(apiMessages, allTools)

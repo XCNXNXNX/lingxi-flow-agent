@@ -148,9 +148,16 @@ async function sleepMs(ms: number): Promise<void> {
 
 export class ApiClient {
   private config: ApiConfig
+  // Adaptive: if a request times out (possibly because the provider/gateway chokes
+  // on the thinking param), we retry WITHOUT it before giving up.
+  private thinkingOptOut: boolean = false
 
   constructor(config: ApiConfig) {
     this.config = config
+  }
+
+  optOutThinking(): void {
+    this.thinkingOptOut = true
   }
 
   updateConfig(config: ApiConfig): void {
@@ -171,10 +178,11 @@ export class ApiClient {
       try {
         Logger.info('ApiClient', 'req model=' + this.config.model + ' msgs=' + messages.length + ' tools=' + (tools ? tools.length : 0))
 
-        const response: http.HttpResponse = await httpRequest.request(url, {
+      const response: http.HttpResponse = await httpRequest.request(url, {
           method: http.RequestMethod.POST,
           header: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'Authorization': 'Bearer ' + this.config.apiKey
           },
           extraData: JSON.stringify(body),
@@ -274,7 +282,7 @@ export class ApiClient {
     const modelLower: string = this.config.model.toLowerCase()
     const isDeepSeek: boolean = baseLower.indexOf('deepseek') >= 0 || modelLower.indexOf('deepseek') >= 0
     const isReasoner: boolean = modelLower.indexOf('reasoner') >= 0 || modelLower.indexOf('r1') >= 0
-    if (isDeepSeek && !isReasoner) {
+    if (isDeepSeek && !isReasoner && !this.thinkingOptOut) {
       const thinkingCtl: ThinkingControl = { type: 'disabled' }
       body.thinking = thinkingCtl
     }
@@ -441,6 +449,7 @@ export class ApiClient {
         method: http.RequestMethod.POST,
         header: {
           'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
           'Authorization': 'Bearer ' + this.config.apiKey
         },
         extraData: JSON.stringify(body),
