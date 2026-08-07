@@ -59,6 +59,102 @@ const BUILTIN_PACKS: SkillPack[] = [
     prompt: '技能「天气管家」：当用户问天气时：1) get_weather 查询（用户没给城市时，先 memory_read 找"常用城市"记忆，找不到则询问）；2) 给出温度/天气/风力 + 穿衣和出行建议；3) 若用户明确表示某个城市是常用城市，用 memory_write 记住。',
     requires: ['get_weather', 'memory_read', 'memory_write'],
     enabled: true
+  },
+  {
+    schemaVersion: 1,
+    name: 'daily_news',
+    displayName: '今日新闻',
+    version: '1.0.0',
+    description: '搜索官方权威媒体，为用户简述今日要闻；指定领域（科技/财经/体育等）时专注该领域权威媒体',
+    author: 'Lingxi Team',
+    tags: ['资讯'],
+    prompt: '技能「今日新闻」：当用户说"今日新闻/看看新闻/有什么新闻"时：\n1) 先判断用户是否指定了领域（科技/财经/体育/国际/娱乐/健康/军事/房产等）。指定了 → 专注该领域权威媒体；没指定 → 综合要闻。\n2) 用 web_search 搜索权威媒体，按领域选择（每轮至少 2 次搜索覆盖不同媒体）：\n- 综合：site:news.cn 今日要闻、site:people.com.cn 今日头条、site:cctv.com 今日新闻\n- 科技：site:ithome.com、site:36kr.com、site:people.com.cn 科技\n- 财经：site:yicai.com、site:caixin.com 快讯、site:finance.sina.com.cn 今日\n- 体育：site:sports.cctv.com、site:sports.sina.com.cn 今日\n- 国际：site:news.cn 国际新闻、site:huanqiu.com 今日\n- 娱乐：site:ent.people.com.cn、site:ent.sina.com.cn\n- 健康：site:health.people.com.cn、site:jiankang.cctv.com\n3) 对最重要的 1-2 条，用 web_fetch 抓取原文确认细节。\n4) 输出格式：先列最重要的 3-5 条（每条 = 标题 + 一句话摘要 + 来源媒体），其余列标题清单；结尾一句点评今日焦点。\n5) 若用户说"详细讲讲XX"，用 web_fetch 抓原文详细讲述。\n6) 用 memory_write 记住用户常看的领域（如"用户关注科技新闻"），下次自动侧重该领域。',
+    requires: ['web_search', 'web_fetch', 'memory_write', 'memory_read'],
+    enabled: true
+  },
+  {
+    schemaVersion: 1,
+    name: 'travel_guide',
+    displayName: '出行助手',
+    version: '1.0.0',
+    description: '目的地天气 + 交通攻略 + 行程规划，一键生成出行清单',
+    author: 'Lingxi Team',
+    tags: ['生活', '旅行'],
+    prompt: '技能「出行助手」：当用户说"要去XX/出行/旅行"时：1) get_current_date 确认日期，get_weather 查目的地近期天气；2) web_search 查目的地攻略（交通/景点/门票/美食，至少 2 次搜索）；3) 输出行程规划：日期+天气、交通方式、每日安排、必去景点、美食推荐；4) 用 write_file 保存为"出行计划-<目的地>.md"；5) 问用户是否需要出发提醒，需要则 create_reminder 设置。',
+    requires: ['get_weather', 'get_current_date', 'web_search', 'write_file', 'create_reminder'],
+    enabled: true
+  },
+  {
+    schemaVersion: 1,
+    name: 'health_guard',
+    displayName: '健康管家',
+    version: '1.0.0',
+    description: '喝水/久坐/睡眠提醒，健康知识查询，打卡记录',
+    author: 'Lingxi Team',
+    tags: ['健康'],
+    prompt: '技能「健康管家」：当用户说"健康/喝水/久坐/养生"时：1) memory_read 查看用户的健康目标和历史打卡；2) 按需设置提醒：喝水（每 60 分钟 create_reminder）、久坐起身（每 90 分钟）、睡眠（用户指定时间）；3) 用户问健康知识时用 web_search 查权威来源（site:health.people.com.cn 或 site:who.int 中文）；4) 用户打卡时用 memory_write 记录（"健康打卡：<日期> <内容>"）；5) 汇总今日健康建议。',
+    requires: ['create_reminder', 'memory_read', 'memory_write', 'web_search', 'get_current_time'],
+    enabled: true
+  },
+  {
+    schemaVersion: 1,
+    name: 'finance_daily',
+    displayName: '财经速递',
+    version: '1.0.0',
+    description: '大盘行情、板块热点、汇率，权威财经媒体速览',
+    author: 'Lingxi Team',
+    tags: ['财经'],
+    prompt: '技能「财经速递」：当用户说"股市/大盘/财经/汇率"时：1) 用 web_search 查权威财经源：site:finance.sina.com.cn 今日 A股、site:yicai.com 今日财经、site:caixin.com 快讯；2) 用户问具体股票/基金时，追加搜索该标的；3) 输出：大盘概况（指数涨跌）、板块热点 2-3 个、重要财经新闻 2-3 条、汇率（如需要）；4) 结尾加一句风险提示（"以上仅为资讯汇总，不构成投资建议"）。',
+    requires: ['web_search', 'web_fetch'],
+    enabled: true
+  },
+  {
+    schemaVersion: 1,
+    name: 'movie_finder',
+    displayName: '影视推荐',
+    version: '1.0.0',
+    description: '热映口碑、高分片单，按口味推荐电影剧集',
+    author: 'Lingxi Team',
+    tags: ['娱乐'],
+    prompt: '技能「影视推荐」：当用户说"电影/剧/好看/推荐"时：1) 确认用户口味（类型/新片或经典/平台），可用 memory_read 找历史偏好；2) web_search 查豆瓣热映口碑与高分片单（site:movie.douban.com 本周热映、site:movie.douban.com 高分）；3) 推荐 3-5 部：片名 + 评分 + 一句话简介 + 看点 + 观看平台；4) 用 memory_write 记住用户口味偏好。',
+    requires: ['web_search', 'memory_read', 'memory_write'],
+    enabled: true
+  },
+  {
+    schemaVersion: 1,
+    name: 'recipe_master',
+    displayName: '美食菜谱',
+    version: '1.0.0',
+    description: '按食材/口味推荐菜谱，输出详细步骤清单',
+    author: 'Lingxi Team',
+    tags: ['生活'],
+    prompt: '技能「美食菜谱」：当用户说"做饭/菜谱/吃什么/怎么做"时：1) 确认食材（用户报的食材或冰箱存货）或口味偏好（川菜/清淡/快手等）；2) web_search 查菜谱（site:xiachufang.com <菜名>、site:meishij.net <菜名>做法）；3) 输出 2-3 道菜：菜名 + 所需食材 + 步骤清单（编号）+ 预计用时；4) 用户说"食材只有XX"时用已有食材推荐。',
+    requires: ['web_search'],
+    enabled: true
+  },
+  {
+    schemaVersion: 1,
+    name: 'night_routine',
+    displayName: '睡前仪式',
+    version: '1.0.0',
+    description: '睡前总结今日、规划明日，设置明早提醒',
+    author: 'Lingxi Team',
+    tags: ['效率', '健康'],
+    prompt: '技能「睡前仪式」：当用户说"晚安/睡觉/睡前"时：1) 用 memory_read 回顾今天的关键事件；2) 帮用户写今日总结（完成的事、未完成的事）；3) 规划明日 1-3 件最重要的事，问用户明早提醒时间；4) create_reminder 设置明早提醒（如"明早 7:30 提醒：<明日要事>"）；5) 用 memory_write 保存"今日总结+明日计划"；6) 温柔道晚安。',
+    requires: ['memory_read', 'memory_write', 'create_reminder', 'get_current_time'],
+    enabled: true
+  },
+  {
+    schemaVersion: 1,
+    name: 'quick_capture',
+    displayName: '灵感速记',
+    version: '1.0.0',
+    description: '一句话记录灵感/待办/想法，自动分类归档',
+    author: 'Lingxi Team',
+    tags: ['效率'],
+    prompt: '技能「灵感速记」：当用户说"记一下/记下来/灵感/待办"时：1) 判断内容类型（灵感/待办/备忘）；2) 用 memory_write 保存为"<类型>：<内容>"，关键词提炼 2-3 个便于检索；3) 待办类追加 create_reminder 提醒（问用户时间或默认当天 20:00）；4) 回复"已记下"+ 关键词 + 后续可随时问"我的灵感"来回顾。',
+    requires: ['memory_write', 'create_reminder'],
+    enabled: true
   }
 ]
 
@@ -76,13 +172,17 @@ export class SkillPackService {
       // already exists
     }
     await this.reload()
-    // First launch: seed builtin packs
-    if (this.packs.length === 0) {
-      for (let i: number = 0; i < BUILTIN_PACKS.length; i++) {
+    // Seed/backfill builtin packs by name (missing ones only, never overwrite user edits)
+    let seeded: number = 0
+    for (let i: number = 0; i < BUILTIN_PACKS.length; i++) {
+      if (!this.findPack(BUILTIN_PACKS[i].name)) {
         await this.writePack(BUILTIN_PACKS[i])
+        seeded++
       }
+    }
+    if (seeded > 0) {
       await this.reload()
-      Logger.info('SkillPackService', 'seeded ' + BUILTIN_PACKS.length + ' builtin packs')
+      Logger.info('SkillPackService', 'seeded/backfilled ' + seeded + ' builtin packs')
     }
   }
 
