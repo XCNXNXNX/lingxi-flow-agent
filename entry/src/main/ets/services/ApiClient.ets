@@ -354,8 +354,13 @@ export class ApiClient {
           resolved = true
           clearInterval(watchdog)
           httpRequest.destroy()
-          Logger.warn('ApiClient', 'STREAM queue timeout at ' + ((Date.now() - reqStartAt) / 1000).toFixed(1) + 's')
-          reject(new Error('模型排队超时（300 秒未收到数据）。服务端可能高峰排队（不同 API Key 服务等级不同），建议：1) 换一个 API Key 试试；2) 在 API 设置切换其他服务商；3) 真机测试（模拟器网络可能慢）'))
+          const waitedSec: number = Math.round((Date.now() - reqStartAt) / 1000)
+          const byteInfo: string = firstByteAt > 0
+            ? '已收到数据（首字节 ' + Math.round((firstByteAt - reqStartAt) / 1000) + 's 后到达），但后续中断'
+            : '从未收到任何数据（网络层无响应）'
+          Logger.warn('ApiClient', 'STREAM timeout after ' + waitedSec + 's, ' + byteInfo)
+          reject(new Error('AI 响应超时：等待 ' + waitedSec + ' 秒，' + byteInfo +
+            '。请依次排查：1) 用电脑 curl 同地址同 Key 测速（见帮助）；2) 换真机测试（模拟器网络可能有兼容问题）；3) 换 API Key 或服务商'))
         }
       }, 15000)
 
