@@ -214,6 +214,10 @@ export class AgentCore {
       // Get enabled tool definitions
       const allTools: ToolDefinition[] = this.toolRegistry.getEnabledToolDefinitions()
 
+      // Eager tool calling results: tool_call_id -> in-flight promise, shared across
+      // iterations so a stream fallback to non-streaming never re-executes a tool
+      const eagerResults: Map<string, Promise<ToolResult>> = new Map()
+
       // ReAct loop
       let iterations: number = 0
       let consecutiveToolErrors: number = 0
@@ -235,6 +239,25 @@ export class AgentCore {
                 if (reason.length === 0) {
                   const streamEvent: AgentStreamEvent = { type: 'stream', content: text }
                   onEvent(streamEvent)
+                }
+              },
+              (toolCall: ToolCall): void => {
+                // EAGER: tool arguments closed mid-stream - execute now, in parallel
+                // with the remaining LLM output. Result is awaited at round end.
+                try {
+                  const p: Promise<ToolResult> = this.toolRegistry.executeTool(
+                    toolCall.function.name, toolCall.function.arguments, toolCall.id)
+                  eagerResults.set(toolCall.id, p)
+                  p.catch((_e: Error): void => {
+                    // Errors surface when the round awaits the promise
+                  })
+                } catch (e) {
+                  const errResult: ToolResult = {
+                    toolCallId: toolCall.id,
+                    content: 'Error: ' + (e as Error).message,
+                    isError: true
+                  }
+                  eagerResults.set(toolCall.id, Promise.resolve(errResult))
                 }
               })
             // Safety: some providers mishandle stream:true and return empty - fall back to non-streaming
@@ -274,12 +297,19 @@ export class AgentCore {
 
           // Execute tool calls IN PARALLEL (they are independent - model returns them
           // together). Serial execution multiplied latency per tool (web searches etc).
+          // Tools that already fired eagerly during streaming are reused - no re-execution.
           const toolCallList: ToolCall[] = assistantMessage.toolCalls
           const execPromises: Promise<ToolResult>[] = []
           for (let p: number = 0; p < toolCallList.length; p++) {
             const tc: ToolCall = toolCallList[p]
-            Logger.info('AgentCore', 'Tool: ' + tc.function.name + '(' + tc.function.arguments + ')')
-            execPromises.push(this.toolRegistry.executeTool(tc.function.name, tc.function.arguments, tc.id))
+            const eager: Promise<ToolResult> | undefined = eagerResults.get(tc.id)
+            if (eager) {
+              Logger.info('AgentCore', 'Tool (eager): ' + tc.function.name)
+              execPromises.push(eager)
+            } else {
+              Logger.info('AgentCore', 'Tool: ' + tc.function.name + '(' + tc.function.arguments + ')')
+              execPromises.push(this.toolRegistry.executeTool(tc.function.name, tc.function.arguments, tc.id))
+            }
           }
           const execResults: ToolResult[] = await Promise.all(execPromises)
 
