@@ -128,7 +128,11 @@ export class AgentCore {
     chatId: string,
     onEvent: (event: AgentEvent) => void
   ): Promise<void> {
-    await this.runLoop(userMessage, chatId, onEvent, true)
+    // Non-stream compatibility mode: some network stacks (emulator) buffer SSE/chunked
+    // responses, making streaming appear dead for minutes. Full JSON responses bypass
+    // that path. The UI falls back to the typewriter effect for non-stream replies.
+    const nonStream: boolean = await configService.getNonStreamMode()
+    await this.runLoop(userMessage, chatId, onEvent, !nonStream)
   }
 
   private async runLoop(

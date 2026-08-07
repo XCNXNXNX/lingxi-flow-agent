@@ -23,6 +23,7 @@ struct ApiSettingsPage {
   @State mcpUrl: string = ''
   @State mcpSaved: boolean = false
   @State fastMode: boolean = false
+  @State nonStreamMode: boolean = false
 
   private col(): ThemeColors {
     return getThemeColors(this.currentTheme)
@@ -38,6 +39,7 @@ struct ApiSettingsPage {
     this.activeId = active ? active.id : ''
     this.mcpUrl = await configService.getMcpUrl()
     this.fastMode = await configService.getFastMode()
+    this.nonStreamMode = await configService.getNonStreamMode()
     // Prefill form with active profile if form is empty
     if (active && this.formBaseUrl.length === 0) {
       this.fillForm(active)
@@ -47,6 +49,11 @@ struct ApiSettingsPage {
   async toggleFastMode(enabled: boolean): Promise<void> {
     await configService.saveFastMode(enabled)
     promptAction.showToast({ message: enabled ? '已开启极速模式：纯对话秒回（工具暂不可用）' : '已关闭极速模式：工具已恢复', duration: 2500 })
+  }
+
+  async toggleNonStreamMode(enabled: boolean): Promise<void> {
+    await configService.saveNonStreamMode(enabled)
+    promptAction.showToast({ message: enabled ? '已开启兼容模式：非流式响应（模拟器/网络环境对流式缓冲时用）' : '已关闭兼容模式：流式响应', duration: 2500 })
   }
 
   fillForm(p: ApiProfile): void {
@@ -328,6 +335,28 @@ struct ApiSettingsPage {
               Toggle({ type: ToggleType.Switch, isOn: this.fastMode })
                 .selectedColor(this.col().accent)
                 .onChange((isOn: boolean): void => { this.toggleFastMode(isOn) })
+            }
+            .width('100%')
+            .padding($r('app.float.spacing_md'))
+            .backgroundColor(this.col().surface)
+            .borderRadius($r('app.float.radius_md'))
+            .border({ width: 1, color: this.col().divider })
+            .margin({ top: $r('app.float.spacing_md') })
+
+            // Non-stream compatibility mode: emulator/network stacks buffer SSE
+            Row() {
+              Column() {
+                Text('兼容模式（非流式）')
+                  .fontSize($r('app.float.font_size_body'))
+                  .fontColor(this.col().textPrimary).fontWeight(FontWeight.Medium)
+                Text('响应改为一次性返回（模拟器或网络环境对流式数据缓冲时，建议开启）')
+                  .fontSize($r('app.float.font_size_caption'))
+                  .fontColor(this.col().textTertiary).margin({ top: 2 })
+              }
+              .alignItems(HorizontalAlign.Start).layoutWeight(1)
+              Toggle({ type: ToggleType.Switch, isOn: this.nonStreamMode })
+                .selectedColor(this.col().accent)
+                .onChange((isOn: boolean): void => { this.toggleNonStreamMode(isOn) })
             }
             .width('100%')
             .padding($r('app.float.spacing_md'))
