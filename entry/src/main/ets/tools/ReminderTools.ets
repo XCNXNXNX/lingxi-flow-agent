@@ -7,6 +7,36 @@ import { ToolRegistry } from '../engine/ToolRegistry'
 import { dbService } from '../engine/DatabaseService'
 import { Logger } from '../utils/Logger'
 
+// Parse an absolute time string to epoch ms. Supports "HH:mm" (today, or tomorrow
+// if already passed) and "YYYY-MM-DD HH:mm". Returns -1 when unparseable.
+function parseDateTimeToMs(datetime: string): number {
+  const s: string = datetime.trim()
+  const now: Date = new Date()
+  const hm: RegExpMatchArray | null = s.match(/^(\d{1,2}):(\d{2})$/)
+  if (hm) {
+    const hour: number = parseInt(hm[1])
+    const minute: number = parseInt(hm[2])
+    if (hour > 23 || minute > 59) {
+      return -1
+    }
+    const target: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0)
+    if (target.getTime() <= now.getTime()) {
+      target.setDate(target.getDate() + 1)
+    }
+    return target.getTime()
+  }
+  const dt: RegExpMatchArray | null = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})$/)
+  if (dt) {
+    const hour: number = parseInt(dt[4])
+    const minute: number = parseInt(dt[5])
+    if (hour > 23 || minute > 59) {
+      return -1
+    }
+    return new Date(parseInt(dt[1]), parseInt(dt[2]) - 1, parseInt(dt[3]), hour, minute, 0, 0).getTime()
+  }
+  return -1
+}
+
 interface ReminderItem {
   id: number
   title: string
@@ -54,7 +84,7 @@ export function getReminders(): ReminderItem[] {
   return gReminders.slice(0)
 }
 
-const SCHEMA_CREATE_REMINDER: Record<string, Object> = JSON.parse('{"type":"object","properties":{"title":{"type":"string","description":"Reminder title, e.g. 睡觉"},"description":{"type":"string","description":"Reminder description"},"minutes":{"type":"number","description":"Delay in minutes before the reminder fires. Required when the user says something like remind me in X minutes. Convert the user requested time into minutes first (use get_current_time to compute the difference for absolute times)."}},"required":["title"]}') as Record<string, Object>
+const SCHEMA_CREATE_REMINDER: Record<string, Object> = JSON.parse('{"type":"object","properties":{"title":{"type":"string","description":"Reminder title, e.g. 睡觉"},"description":{"type":"string","description":"Reminder description"},"datetime":{"type":"string","description":"ABSOLUTE fire time. Formats: \"20:50\" (today; tomorrow if already passed) or \"2026-08-08 20:50\". ALWAYS use this when the user names a specific time (8点50/下午3点/明天早上7点). Do NOT compute minutes yourself - the tool converts it to the correct delay internally."},"minutes":{"type":"number","description":"Delay in minutes. ONLY for relative requests like \"remind me in X minutes\"."}},"required":["title"]}') as Record<string, Object>
 
 const SCHEMA_LIST_REMINDERS: Record<string, Object> = JSON.parse('{"type":"object","properties":{},"required":[]}') as Record<string, Object>
 
@@ -121,9 +151,21 @@ export function registerReminderTools(registry: ToolRegistry): void {
       const title: string = (input['title'] as string) || '灵犀提醒'
       const desc: string = (input['description'] as string) || ''
       const rawMinutes: string = String(input['minutes'] === undefined ? '' : input['minutes'])
-      let minutes: number = parseInt(rawMinutes) || 60
-      if (minutes < 1) {
-        minutes = 1
+      const datetime: string = ((input['datetime'] as string) || '').trim()
+      let minutes: number = 0
+      if (datetime.length > 0) {
+        // Absolute time: convert to delay AT EXECUTION TIME, so a slow model round-trip
+        // can never make the reminder fire late (the old minutes-diff approach did)
+        const parsedMs: number = parseDateTimeToMs(datetime)
+        if (parsedMs < 0) {
+          return '错误: 无法解析时间 "' + datetime + '"。请用 20:50 或 2026-08-08 20:50 格式重试。'
+        }
+        minutes = Math.max(1, Math.round((parsedMs - Date.now()) / 60000))
+      } else {
+        minutes = parseInt(rawMinutes) || 60
+        if (minutes < 1) {
+          minutes = 1
+        }
       }
       const fireAt: number = Date.now() + minutes * 60000
 

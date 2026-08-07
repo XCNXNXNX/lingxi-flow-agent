@@ -94,6 +94,12 @@ interface ApiResponseError {
 
 interface ApiStreamChunk {
   choices?: ApiStreamChoice[]
+  usage?: ApiStreamUsage
+}
+
+interface ApiStreamUsage {
+  prompt_cache_hit_tokens?: number
+  prompt_cache_miss_tokens?: number
 }
 
 interface ApiStreamChoice {
@@ -257,9 +263,12 @@ export class ApiClient {
     }
     // DeepSeek API defaults to thinking mode (enabled) - each request spends minutes
     // on hidden reasoning before answering. Disable it for non-reasoner models so
-    // simple questions get instant replies (deepseek-reasoner keeps thinking on purpose).
-    const isDeepSeek: boolean = this.config.baseUrl.indexOf('deepseek') >= 0
-    const isReasoner: boolean = this.config.model.indexOf('reasoner') >= 0
+    // simple questions get instant replies. Also covers third-party hosts serving
+    // DeepSeek models (e.g. SiliconFlow deepseek-ai/DeepSeek-V3).
+    const baseLower: string = this.config.baseUrl.toLowerCase()
+    const modelLower: string = this.config.model.toLowerCase()
+    const isDeepSeek: boolean = baseLower.indexOf('deepseek') >= 0 || modelLower.indexOf('deepseek') >= 0
+    const isReasoner: boolean = modelLower.indexOf('reasoner') >= 0 || modelLower.indexOf('r1') >= 0
     if (isDeepSeek && !isReasoner) {
       const thinkingCtl: ThinkingControl = { type: 'disabled' }
       body.thinking = thinkingCtl
@@ -378,6 +387,11 @@ export class ApiClient {
             }
             try {
               const chunk: ApiStreamChunk = JSON.parse(payload) as ApiStreamChunk
+              // DeepSeek context-cache telemetry (last chunk carries usage)
+              if (chunk.usage) {
+                Logger.info('ApiClient', 'cache hit=' + (chunk.usage.prompt_cache_hit_tokens || 0) +
+                  ' miss=' + (chunk.usage.prompt_cache_miss_tokens || 0))
+              }
               if (!chunk.choices || chunk.choices.length === 0) {
                 idx = buffer.indexOf('\n')
                 continue
