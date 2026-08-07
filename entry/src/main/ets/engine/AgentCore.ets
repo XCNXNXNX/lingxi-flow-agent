@@ -284,7 +284,12 @@ export class AgentCore {
             }
           } catch (e) {
             const errMsg: string = (e as Error).message
-            if (errMsg.indexOf('排队超时') >= 0) {
+            if (errMsg.indexOf('首字节') >= 0) {
+              // First-byte stall = SSE buffering (emulator/network stack). Retry as
+              // non-stream - full JSON responses bypass the buffering path entirely.
+              Logger.warn('AgentCore', 'first-byte stall, retrying non-stream')
+              response = await client.sendMessage(apiMessages, allTools)
+            } else if (errMsg.indexOf('排队超时') >= 0) {
               // Queue timeout. First suspect: some gateways/proxies hang on the
               // thinking param - retry the stream WITHOUT it before giving up.
               if (!clientOptOutDone) {

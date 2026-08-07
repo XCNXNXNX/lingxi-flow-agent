@@ -350,6 +350,18 @@ export class ApiClient {
           clearInterval(watchdog)
           return
         }
+        // FIRST-BYTE STALL: 30s without any data while streaming - on emulator/network
+        // stacks that buffer SSE this means 'never'. Fail fast with a special error so
+        // AgentCore retries as NON-STREAM (bypasses the buffering path) instead of
+        // waiting 300s for a response that will never arrive.
+        if (firstByteAt === 0 && Date.now() - reqStartAt > 30000) {
+          resolved = true
+          clearInterval(watchdog)
+          httpRequest.destroy()
+          Logger.warn('ApiClient', 'STREAM first-byte stall after 30s, auto fallback to non-stream')
+          reject(new Error('首字节等待超时（30 秒未收到数据），自动切换非流式重试'))
+          return
+        }
         if (Date.now() - lastDataAt > 300000) {
           resolved = true
           clearInterval(watchdog)
@@ -362,7 +374,7 @@ export class ApiClient {
           reject(new Error('AI 响应超时：等待 ' + waitedSec + ' 秒，' + byteInfo +
             '。请依次排查：1) 用电脑 curl 同地址同 Key 测速（见帮助）；2) 换真机测试（模拟器网络可能有兼容问题）；3) 换 API Key 或服务商'))
         }
-      }, 15000)
+      }, 5000)
 
       const finalize = (): void => {
         if (resolved) {
