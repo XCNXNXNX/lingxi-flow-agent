@@ -312,3 +312,27 @@ export class LLMProvider {
     this.description = description
   }
 }
+
+// --- API profiles (API library: multiple saved configs, quick switch) ---
+
+export interface ApiProfile {
+  id: string
+  name: string
+  provider: string
+  baseUrl: string
+  apiKey: string
+  model: string
+  maxTokens: number
+  temperature: number
+  embedKey: string
+  embedUrl: string
+}
+
+// --- Provider presets (one-tap fill, no manual base URL) ---
+
+export interface ProviderPreset {
+  name: string
+  baseUrl: string
+  model: string
+  note: string
+}

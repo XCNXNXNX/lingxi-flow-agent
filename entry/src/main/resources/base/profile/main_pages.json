@@ -5,6 +5,7 @@
     "pages/ResultPage",
     "pages/FileBrowserPage",
     "pages/SettingsPage",
+    "pages/ApiSettingsPage",
     "pages/KnowledgePage",
     "pages/DevicePage"
   ]

@@ -741,11 +741,20 @@ struct ChatPage {
 
         Scroll() {
           Column() {
-            Text('API 配置')
-              .fontSize($r('app.float.font_size_subtitle'))
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.col().textPrimary)
-              .margin({ bottom: $r('app.float.spacing_md') })
+            Row() {
+              Text('API 配置')
+                .fontSize($r('app.float.font_size_subtitle'))
+                .fontWeight(FontWeight.Bold)
+                .fontColor(this.col().textPrimary)
+              Blank()
+              Text('完整设置 ›')
+                .fontSize($r('app.float.font_size_caption')).fontColor(this.col().accent)
+                .onClick(() => {
+                  this.showSettings = false
+                  router.pushUrl({ url: 'pages/ApiSettingsPage' })
+                })
+            }
+            .width('100%').margin({ bottom: $r('app.float.spacing_md') })
 
             this.settingsField('API 地址', this.col())
             TextInput({ text: this.apiUrl, placeholder: 'https://api.deepseek.com/v1' })
@@ -770,28 +779,19 @@ struct ChatPage {
               .onChange((v: string): void => { this.embedKey = v })
               .margin({ top: $r('app.float.spacing_xs'), bottom: $r('app.float.spacing_md') })
 
-            this.settingsField('MCP 服务器（可选，保存后重启生效）', this.col())
-            TextInput({ text: this.mcpUrl, placeholder: 'http://192.168.x.x:8080/mcp（远程工具）' })
-              .fontColor(this.col().textPrimary).placeholderColor(this.col().textTertiary)
-              .backgroundColor(this.col().surfaceVariant).borderRadius($r('app.float.radius_sm'))
-              .onChange((v: string): void => { this.mcpUrl = v })
-              .margin({ top: $r('app.float.spacing_xs'), bottom: $r('app.float.spacing_sm') })
-
-            // 一键预设：鸿蒙官方开发者知识 MCP
+            this.settingsField('MCP 服务器', this.col())
             Row() {
-              Text('快捷预设')
+              Text('MCP 配置已移至 API 设置页')
                 .fontSize($r('app.float.font_size_caption')).fontColor(this.col().textTertiary)
-                .margin({ right: $r('app.float.spacing_sm') })
-              Button('鸿蒙官方文档')
-                .fontSize($r('app.float.font_size_caption')).fontColor('#FFFFFF')
-                .backgroundColor(this.col().accent)
-                .borderRadius($r('app.float.radius_sm')).height(28)
+                .layoutWeight(1)
+              Text('去配置 ›')
+                .fontSize($r('app.float.font_size_caption')).fontColor(this.col().accent)
                 .onClick(() => {
-                  this.mcpUrl = 'https://connect-api.cloud.huawei.com/api/developerknowledge/mcp'
-                  promptAction.showToast({ message: '已填入鸿蒙官方文档 MCP，保存后重启生效', duration: 2500 })
+                  this.showSettings = false
+                  router.pushUrl({ url: 'pages/ApiSettingsPage' })
                 })
             }
-            .width('100%').margin({ bottom: $r('app.float.spacing_md') })
+            .width('100%').margin({ top: $r('app.float.spacing_xs'), bottom: $r('app.float.spacing_md') })
 
             this.settingsField('模型', this.col())
             TextInput({ text: this.apiModel, placeholder: 'deepseek-chat' })

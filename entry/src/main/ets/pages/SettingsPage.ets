@@ -217,6 +217,30 @@ struct SettingsPage {
           this.themeBlock('🦞', '龙虾风格', '深色 · 珊瑚', 'lobster', this.col())
           this.themeBlock('🔮', '灵犀风格', '浅色 · 紫罗兰', 'lingxi', this.col())
 
+          // API service entry
+          Row() {
+            Text('⚙')
+              .fontSize(18).margin({ right: $r('app.float.spacing_sm') })
+            Column() {
+              Text('API 服务')
+                .fontSize($r('app.float.font_size_body'))
+                .fontColor(this.col().textPrimary).fontWeight(FontWeight.Medium)
+              Text('API 库 / 服务商预设 / MCP 配置')
+                .fontSize($r('app.float.font_size_caption'))
+                .fontColor(this.col().textTertiary).margin({ top: 2 })
+            }
+            .alignItems(HorizontalAlign.Start).layoutWeight(1)
+            Text('›')
+              .fontSize(18).fontColor(this.col().textTertiary)
+          }
+          .width('100%')
+          .padding($r('app.float.spacing_md'))
+          .backgroundColor(this.col().surface)
+          .borderRadius($r('app.float.radius_md'))
+          .border({ width: 1, color: this.col().divider })
+          .margin({ top: $r('app.float.spacing_sm') })
+          .onClick(() => { router.pushUrl({ url: 'pages/ApiSettingsPage' }) })
+
           // Memory section
           Row() {
             Text('记忆')
