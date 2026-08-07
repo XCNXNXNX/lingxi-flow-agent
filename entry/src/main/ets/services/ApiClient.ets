@@ -59,6 +59,7 @@ interface ApiResponseChoice {
 interface ApiResponseMessage {
   role: string
   content: string | null
+  reasoning_content?: string | null
   tool_calls?: ApiResponseToolCall[]
 }
 
@@ -103,6 +104,7 @@ interface ApiStreamMessage {
 
 interface ApiStreamDelta {
   content?: string | null
+  reasoning_content?: string | null
   tool_calls?: ApiStreamToolCallDelta[]
 }
 
@@ -270,13 +272,13 @@ export class ApiClient {
 
   /**
    * Streaming (SSE) chat completion.
-   * onDelta(text, finishReason) is called on every text delta with the accumulated text.
+   * onDelta(text, finishReason, reasoningText) is called on every delta with accumulated text.
    * Resolves with the full ApiResponse once the stream ends ([DONE] or dataEnd).
    */
   async sendMessageStream(
     messages: ApiMessage[],
     tools: ToolDefinition[] | undefined,
-    onDelta: (text: string, finishReason: string) => void
+    onDelta: (text: string, finishReason: string, reasoningText: string) => void
   ): Promise<ApiResponse> {
     const url: string = this.config.baseUrl + '/chat/completions'
     const apiMessages: ApiRequestMessage[] = this.buildRequestMessages(messages)
@@ -287,6 +289,7 @@ export class ApiClient {
 
     let buffer: string = ''
     let accText: string = ''
+    let accReasoning: string = ''
     let finishReason: string = ''
     let resolved: boolean = false
     let lastDataAt: number = Date.now()
@@ -320,6 +323,7 @@ export class ApiClient {
         const apiMessage: ApiMessage = {
           role: 'assistant',
           content: accText,
+          reasoning: accReasoning.length > 0 ? accReasoning : undefined,
           toolCalls: toolCalls.length > 0 ? toolCalls : undefined
         }
         const apiChoice: ApiChoice = {
@@ -365,9 +369,12 @@ export class ApiClient {
               }
               const delta: ApiStreamDelta | undefined = choice.delta
               if (delta) {
+                if (delta.reasoning_content && delta.reasoning_content.length > 0) {
+                  accReasoning += delta.reasoning_content
+                }
                 if (delta.content && delta.content.length > 0) {
                   accText += delta.content
-                  onDelta(accText, finishReason)
+                  onDelta(accText, finishReason, accReasoning)
                 }
                 if (delta.tool_calls && delta.tool_calls.length > 0) {
                   this.accumulateToolCall(toolCallMap, delta.tool_calls)
@@ -375,7 +382,7 @@ export class ApiClient {
               } else if (choice.message && choice.message.content && choice.message.content.length > 0) {
                 // Non-standard provider: full message in one chunk instead of deltas
                 accText = choice.message.content
-                onDelta(accText, finishReason)
+                onDelta(accText, finishReason, accReasoning)
               }
             } catch (_e) {
               // ignore malformed frames (keep-alive etc.)
@@ -470,6 +477,7 @@ export class ApiClient {
     const apiMessage: ApiMessage = {
       role: message.role as ('system' | 'user' | 'assistant' | 'tool'),
       content: message.content,
+      reasoning: message.reasoning_content && message.reasoning_content.length > 0 ? message.reasoning_content : undefined,
       toolCalls: toolCalls
     }
 

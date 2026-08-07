@@ -22,6 +22,7 @@ import {
   AgentEvent,
   AgentTextEvent,
   AgentStreamEvent,
+  AgentReasoningEvent,
   AgentToolUseEvent,
   AgentErrorEvent,
   AgentDoneEvent,
@@ -232,7 +233,11 @@ export class AgentCore {
         if (useStream) {
           try {
             response = await client.sendMessageStream(apiMessages, allTools,
-              (text: string, reason: string): void => {
+              (text: string, reason: string, reasoningText: string): void => {
+                if (reasoningText.length > 0) {
+                  const rEvent: AgentReasoningEvent = { type: 'reasoning', content: reasoningText }
+                  onEvent(rEvent)
+                }
                 if (reason.length === 0) {
                   const streamEvent: AgentStreamEvent = { type: 'stream', content: text }
                   onEvent(streamEvent)
@@ -255,6 +260,11 @@ export class AgentCore {
         }
         const choice: ApiChoice = response.choices[0]
         const assistantMessage: ApiMessage = choice.message
+        // Report thinking (reasoning_content) if the provider returned it
+        if (assistantMessage.reasoning && assistantMessage.reasoning.length > 0) {
+          const rEvent: AgentReasoningEvent = { type: 'reasoning', content: assistantMessage.reasoning }
+          onEvent(rEvent)
+        }
 
         Logger.info('AgentCore', 'finish_reason=' + choice.finishReason + ' tokens=' + response.usage.totalTokens)
 

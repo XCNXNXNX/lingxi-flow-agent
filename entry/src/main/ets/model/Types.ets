@@ -12,6 +12,7 @@ export interface ChatMessage {
   timestamp: string
   isFromMe: boolean
   toolCalls?: ToolCallRecord[]
+  reasoning?: string
 }
 
 export interface ChatConversation {
@@ -73,6 +74,7 @@ export interface ApiMessage {
   content?: string | null
   toolCalls?: ToolCall[]
   toolCallId?: string
+  reasoning?: string
 }
 
 export interface ApiResponse {
@@ -142,6 +144,11 @@ export interface AgentStreamEvent {
   content: string
 }
 
+export interface AgentReasoningEvent {
+  type: 'reasoning'
+  content: string
+}
+
 export interface AgentToolUseEvent {
   type: 'tool_use'
   name: string
@@ -159,7 +166,7 @@ export interface AgentDoneEvent {
   type: 'done'
 }
 
-export type AgentEvent = AgentTextEvent | AgentStreamEvent | AgentToolUseEvent | AgentErrorEvent | AgentDoneEvent
+export type AgentEvent = AgentTextEvent | AgentStreamEvent | AgentReasoningEvent | AgentToolUseEvent | AgentErrorEvent | AgentDoneEvent
 
 // --- Task Steps (for WorkflowEngine / ResultPage) ---
 

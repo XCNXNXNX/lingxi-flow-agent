@@ -16,15 +16,21 @@ interface DisplayMessage {
   isFromMe: boolean
   timestamp: string
   toolCalls?: ToolCallRecord[]
+  reasoning?: string
   isThinking?: boolean
+  showTools?: boolean
+  showReasoning?: boolean
   pairId?: string
 }
+
+const PAGE_SIZE: number = 15
 
 @Entry
 @Component
 struct ChatPage {
   @StorageLink('themeStyle') currentTheme: ThemeStyle = 'lingxi'
   @State messages: DisplayMessage[] = []
+  @State page: number = 1
   @State inputText: string = ''
   @State isRunning: boolean = false
   @State hasApiKey: boolean = false
@@ -77,6 +83,7 @@ struct ChatPage {
 
   aboutToDisappear(): void {
     this.destroyed = true
+    this.savePosition()
     this.stopTypewriter()
     voiceService.cancelListening()
     voiceService.stopSpeaking()
@@ -174,7 +181,12 @@ struct ChatPage {
   }
 
   async loadMessages(): Promise<void> {
-    const msgs = await dbService.getMessages(this.chatId, 100)
+    // Restore pagination + scroll position of the previous chat (position memory)
+    await this.savePosition()
+    const savedY: string | null = await dbService.getKV('chat_scroll_' + this.chatId)
+    const savedPage: string | null = await dbService.getKV('chat_page_' + this.chatId)
+
+    const msgs = await dbService.getMessages(this.chatId, 1000)
     const displayMsgs: DisplayMessage[] = []
     let currentPairId: string = ''
     for (let i: number = 0; i < msgs.length; i++) {
@@ -188,16 +200,70 @@ struct ChatPage {
         isFromMe: m.isFromMe,
         timestamp: m.timestamp,
         toolCalls: m.toolCalls,
+        reasoning: m.reasoning,
         pairId: currentPairId
       })
     }
     this.messages = displayMsgs
+
+    // Restore page (clamped) then scroll to saved offset, else bottom
+    const total: number = this.totalPages()
+    const savedPageNum: number = savedPage ? parseInt(savedPage) : 1
+    this.page = savedPageNum >= 1 && savedPageNum <= total ? savedPageNum : 1
+    setTimeout((): void => {
+      if (savedY && savedY.length > 0 && !this.destroyed) {
+        const y: number = parseInt(savedY)
+        if (y > 0) {
+          this.scroller.scrollTo({ xOffset: 0, yOffset: y })
+          return
+        }
+      }
+      this.scrollToBottom()
+    }, 200)
+  }
+
+  // Page window for the current page (latest messages are page 1)
+  getPageMessages(): DisplayMessage[] {
+    const total: number = this.messages.length
+    const end: number = total - (this.page - 1) * PAGE_SIZE
+    const start: number = Math.max(0, end - PAGE_SIZE)
+    if (start >= end) {
+      return []
+    }
+    return this.messages.slice(start, end)
+  }
+
+  totalPages(): number {
+    return Math.max(1, Math.ceil(this.messages.length / PAGE_SIZE))
+  }
+
+  goPage(p: number): void {
+    const total: number = this.totalPages()
+    this.page = p < 1 ? 1 : (p > total ? total : p)
+    setTimeout((): void => {
+      if (!this.destroyed && this.getPageMessages().length > 0) {
+        this.scroller.scrollToIndex(0)
+      }
+    }, 80)
+  }
+
+  async savePosition(): Promise<void> {
+    try {
+      if (this.chatId.length === 0 || this.messages.length === 0) {
+        return
+      }
+      const offset: number = this.scroller.currentOffset().yOffset
+      await dbService.setKV('chat_scroll_' + this.chatId, String(Math.max(0, offset)))
+      await dbService.setKV('chat_page_' + this.chatId, String(this.page))
+    } catch (_e) {
+      // ignore
+    }
   }
 
   scrollToBottom(): void {
     setTimeout((): void => {
-      if (!this.destroyed && this.messages.length > 0) {
-        this.scroller.scrollToIndex(this.messages.length - 1)
+      if (!this.destroyed && this.getPageMessages().length > 0) {
+        this.scroller.scrollToIndex(this.getPageMessages().length - 1)
       }
     }, 100)
   }
@@ -208,6 +274,8 @@ struct ChatPage {
     this.inputText = ''
     this.isRunning = true
     this.currentToolInfo = ''
+    // Sending jumps back to the newest page
+    this.page = 1
 
     const pairId: string = 'pair_' + Date.now()
     const isFirstMsg: boolean = this.messages.length === 0
@@ -240,9 +308,23 @@ struct ChatPage {
 
     const toolCalls: ToolCallRecord[] = []
     let streamedText: string = ''
+    let reasoningText: string = ''
     let replyReceived: boolean = false
     await agentCore.runAgentStream(text, this.chatId, (event: AgentEvent): void => {
-      if (event.type === 'stream') {
+      if (event.type === 'reasoning') {
+        // AI thinking: store it, shown collapsed by default on the final bubble
+        reasoningText = event.content
+        const ridx: number = this.messages.findIndex((m: DisplayMessage): boolean => m.id === thinkingId)
+        if (ridx >= 0) {
+          const rex: DisplayMessage = this.messages[ridx]
+          this.messages[ridx] = {
+            id: rex.id, content: rex.content,
+            isFromMe: rex.isFromMe, timestamp: rex.timestamp,
+            toolCalls: rex.toolCalls, reasoning: reasoningText,
+            isThinking: rex.isThinking, pairId: pairId
+          }
+        }
+      } else if (event.type === 'stream') {
         streamedText = event.content
         this.updateThinkingBubble(thinkingId, event.content, pairId)
       } else if (event.type === 'tool_use') {
@@ -257,18 +339,19 @@ struct ChatPage {
           this.messages[idx] = {
             id: ex.id, content: event.name + '...',
             isFromMe: ex.isFromMe, timestamp: ex.timestamp,
-            toolCalls: ex.toolCalls, isThinking: ex.isThinking, pairId: pairId
+            toolCalls: ex.toolCalls, reasoning: reasoningText,
+            isThinking: ex.isThinking, pairId: pairId
           }
         }
       } else if (event.type === 'text') {
         replyReceived = true
         if (streamedText.length > 0) {
           // Text was already streamed live - replace the bubble directly
-          this.replaceThinking(thinkingId, event.content, pairId, toolCalls)
+          this.replaceThinking(thinkingId, event.content, pairId, toolCalls, reasoningText)
           this.isRunning = false
           this.currentToolInfo = ''
         } else {
-          this.startTypewriter(thinkingId, event.content, pairId, toolCalls)
+          this.startTypewriter(thinkingId, event.content, pairId, toolCalls, reasoningText)
         }
       } else if (event.type === 'error') {
         replyReceived = true
@@ -283,7 +366,7 @@ struct ChatPage {
             const fallback: string = toolCalls.length > 0
               ? '✅ 已执行 ' + toolCalls.length + ' 个工具，但未返回文字回复，请继续提问'
               : '（未能获取到 AI 回复，请检查网络或 API 配置后重试）'
-            this.replaceThinking(thinkingId, fallback, pairId, toolCalls)
+            this.replaceThinking(thinkingId, fallback, pairId, toolCalls, reasoningText)
           }
         }
         if (isFirstMsg) { this.generateChatName(text) }
@@ -294,7 +377,7 @@ struct ChatPage {
     await this.loadConversations()
   }
 
-  replaceThinking(thinkingId: string, content: string, pairId: string, toolCalls?: ToolCallRecord[]): void {
+  replaceThinking(thinkingId: string, content: string, pairId: string, toolCalls?: ToolCallRecord[], reasoning?: string): void {
     const idx: number = this.messages.findIndex((m: DisplayMessage): boolean => m.id === thinkingId)
     if (idx >= 0) {
       this.messages[idx] = {
@@ -303,6 +386,7 @@ struct ChatPage {
         isFromMe: false,
         timestamp: new Date().toISOString(),
         toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
+        reasoning: reasoning && reasoning.length > 0 ? reasoning : undefined,
         isThinking: false,
         pairId: pairId
       }
@@ -320,17 +404,19 @@ struct ChatPage {
         isFromMe: false,
         timestamp: ex.timestamp,
         toolCalls: ex.toolCalls,
+        reasoning: ex.reasoning,
         isThinking: true,
         pairId: pairId
       }
     }
   }
 
-  startTypewriter(thinkingId: string, fullText: string, pairId: string, toolCalls?: ToolCallRecord[]): void {
+  startTypewriter(thinkingId: string, fullText: string, pairId: string, toolCalls?: ToolCallRecord[], reasoning?: string): void {
     this.stopTypewriter()
     const idx: number = this.messages.findIndex((m: DisplayMessage): boolean => m.id === thinkingId)
     if (idx < 0) { return }
     const base: DisplayMessage = this.messages[idx]
+    const finalReasoning: string | undefined = reasoning && reasoning.length > 0 ? reasoning : base.reasoning
     let pos: number = 0
     const speed: number = fullText.length > 200 ? 10 : 15
 
@@ -343,6 +429,7 @@ struct ChatPage {
           isFromMe: false,
           timestamp: new Date().toISOString(),
           toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
+          reasoning: finalReasoning,
           isThinking: false,
           pairId: pairId
         }
@@ -358,6 +445,7 @@ struct ChatPage {
           isFromMe: base.isFromMe,
           timestamp: base.timestamp,
           toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
+          reasoning: finalReasoning,
           isThinking: true,
           pairId: pairId
         }
@@ -449,6 +537,13 @@ struct ChatPage {
     }
   }
 
+  private shorten(text: string, maxLen: number): string {
+    if (text.length <= maxLen) {
+      return text
+    }
+    return text.substring(0, maxLen) + '…'
+  }
+
   toggleSpeak(msg: DisplayMessage): void {
     if (this.speakingMsgId === msg.id) {
       voiceService.stopSpeaking()
@@ -536,20 +631,65 @@ struct ChatPage {
 
         // Messages
         List({ scroller: this.scroller }) {
-          ForEach(this.messages, (msg: DisplayMessage): void => {
+          ForEach(this.getPageMessages(), (msg: DisplayMessage): void => {
             ListItem() {
               Column() {
-                // Tool calls
+                // Tool calls (collapsed by default)
                 if (msg.toolCalls && msg.toolCalls.length > 0) {
                   Row() {
-                    ForEach(msg.toolCalls, (tc: ToolCallRecord): void => {
-                      Text((tc.isError ? '✗ ' : '◎ ') + tc.name)
-                        .fontSize(11)
-                        .fontColor(tc.isError ? '#DC2626' : this.col().textTertiary)
-                        .padding({ right: 8 })
-                    })
+                    Text(msg.showTools ? '▾' : '▸')
+                      .fontSize(10).fontColor(this.col().textTertiary)
+                      .margin({ right: 4 })
+                    Text('🔧 ' + msg.toolCalls.length + ' 个工具调用')
+                      .fontSize(11).fontColor(this.col().textTertiary)
                   }
                   .width('100%').padding({ left: 4, right: 4, top: 2 })
+                  .onClick(() => {
+                    const tIdx: number = this.messages.findIndex((m: DisplayMessage): boolean => m.id === msg.id)
+                    if (tIdx >= 0) {
+                      const tm: DisplayMessage = this.messages[tIdx]
+                      this.messages[tIdx] = {
+                        id: tm.id, content: tm.content, isFromMe: tm.isFromMe, timestamp: tm.timestamp,
+                        toolCalls: tm.toolCalls, reasoning: tm.reasoning,
+                        isThinking: tm.isThinking, showTools: !tm.showTools,
+                        showReasoning: tm.showReasoning, pairId: tm.pairId
+                      }
+                    }
+                  })
+                  if (msg.showTools) {
+                    Column() {
+                      ForEach(msg.toolCalls, (tc: ToolCallRecord): void => {
+                        Column() {
+                          Row() {
+                            Text((tc.isError ? '✗ ' : '◎ ') + tc.name)
+                              .fontSize(11)
+                              .fontColor(tc.isError ? '#DC2626' : this.col().textSecondary)
+                              .fontWeight(FontWeight.Medium)
+                            Blank()
+                            Text(tc.isError ? '失败' : '成功')
+                              .fontSize(9).fontColor(tc.isError ? '#DC2626' : '#047857')
+                          }
+                          .width('100%')
+                          if (tc.input && tc.input.length > 0) {
+                            Text('参数: ' + this.shorten(tc.input, 120))
+                              .fontSize(10).fontColor(this.col().textTertiary).width('100%')
+                              .margin({ top: 2 })
+                          }
+                          if (tc.result && tc.result.length > 0) {
+                            Text('结果: ' + this.shorten(tc.result, 200))
+                              .fontSize(10).fontColor(this.col().textTertiary).width('100%')
+                              .margin({ top: 2 })
+                          }
+                        }
+                        .width('100%')
+                        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+                        .backgroundColor(this.col().surfaceVariant)
+                        .borderRadius($r('app.float.radius_sm'))
+                        .margin({ top: 4 })
+                      })
+                    }
+                    .width('100%').padding({ left: 4, right: 4, top: 2 })
+                  }
                 }
 
                 Row() {
@@ -561,6 +701,40 @@ struct ChatPage {
                       textColor: msg.isFromMe ? '#FFFFFF' : this.col().textPrimary,
                       accentColor: msg.isFromMe ? 'rgba(255,255,255,0.7)' : this.col().accent
                     })
+
+                    // Thinking (reasoning) - collapsed by default, tap to expand
+                    if (!msg.isFromMe && !msg.isThinking && msg.reasoning && msg.reasoning.length > 0) {
+                      Row() {
+                        Text(msg.showReasoning ? '▾' : '▸')
+                          .fontSize(10).fontColor(this.col().accent).margin({ right: 4 })
+                        Text(msg.showReasoning ? '收起思考' : '💭 思考过程')
+                          .fontSize(10).fontColor(this.col().accent)
+                      }
+                      .margin({ top: 6 })
+                      .onClick(() => {
+                        const rIdx: number = this.messages.findIndex((m: DisplayMessage): boolean => m.id === msg.id)
+                        if (rIdx >= 0) {
+                          const rm: DisplayMessage = this.messages[rIdx]
+                          this.messages[rIdx] = {
+                            id: rm.id, content: rm.content, isFromMe: rm.isFromMe, timestamp: rm.timestamp,
+                            toolCalls: rm.toolCalls, reasoning: rm.reasoning,
+                            isThinking: rm.isThinking, showTools: rm.showTools,
+                            showReasoning: !rm.showReasoning, pairId: rm.pairId
+                          }
+                        }
+                      })
+                      if (msg.showReasoning) {
+                        Text(msg.reasoning)
+                          .fontSize(10)
+                          .fontColor(this.col().textTertiary)
+                          .fontStyle(FontStyle.Italic)
+                          .width('100%')
+                          .padding({ left: 6, right: 6, top: 6, bottom: 4 })
+                          .backgroundColor('rgba(127,127,127,0.08)')
+                          .borderRadius($r('app.float.radius_sm'))
+                          .margin({ top: 4 })
+                      }
+                    }
 
                     // TTS speak button (AI messages only)
                     if (!msg.isFromMe && !msg.isThinking && msg.content.length > 0) {
@@ -619,6 +793,32 @@ struct ChatPage {
           .width('100%')
           .padding({ left: 16, right: 16, top: 6, bottom: 6 })
           .backgroundColor(this.col().surfaceVariant)
+        }
+
+        // Pagination bar (page-by-page browsing, same conversation = AI memory kept)
+        if (this.messages.length > PAGE_SIZE) {
+          Row() {
+            Text('‹')
+              .fontSize(16).fontColor(this.page > 1 ? this.col().textPrimary : this.col().textTertiary)
+              .padding({ left: 14, right: 14, top: 6, bottom: 6 })
+              .onClick(() => { this.goPage(this.page - 1) })
+            Text('第 ' + this.page + '/' + this.totalPages() + ' 页')
+              .fontSize(11).fontColor(this.col().textTertiary)
+            Text('›')
+              .fontSize(16).fontColor(this.page < this.totalPages() ? this.col().textPrimary : this.col().textTertiary)
+              .padding({ left: 14, right: 14, top: 6, bottom: 6 })
+              .onClick(() => { this.goPage(this.page + 1) })
+            if (this.page > 1) {
+              Text('最新')
+                .fontSize(11).fontColor(this.col().accent)
+                .padding({ left: 8, right: 4, top: 6, bottom: 6 })
+                .onClick(() => { this.goPage(1) })
+            }
+          }
+          .width('100%')
+          .justifyContent(FlexAlign.Center)
+          .padding({ top: 4, bottom: 4 })
+          .backgroundColor(this.col().glassNav)
         }
 
         // Input

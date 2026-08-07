@@ -28,10 +28,18 @@ const CREATE_SCHEMA: string = `
     timestamp TEXT,
     is_from_me INTEGER,
     tool_calls TEXT,
+    reasoning TEXT,
     FOREIGN KEY (chat_id) REFERENCES chats(id)
   );
   CREATE INDEX IF NOT EXISTS idx_msg_timestamp ON messages(timestamp);
   CREATE INDEX IF NOT EXISTS idx_msg_chat ON messages(chat_id);
+
+  try {
+    // Upgrade path: add reasoning column for older databases
+    await this.rdbStore!.executeSql('ALTER TABLE messages ADD COLUMN reasoning TEXT')
+  } catch (_e) {
+    // Column already exists - ignore
+  }
 
   CREATE TABLE IF NOT EXISTS scheduled_tasks (
     id TEXT PRIMARY KEY,
@@ -130,15 +138,15 @@ export class DatabaseService {
   async storeMessage(msg: ChatMessage): Promise<void> {
     const toolCallsJson: string | null = msg.toolCalls ? JSON.stringify(msg.toolCalls) : null
     await this.rdbStore!.executeSql(
-      'INSERT OR REPLACE INTO messages (id, chat_id, sender, sender_name, content, timestamp, is_from_me, tool_calls) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [msg.id, msg.chatId, msg.sender, msg.senderName, msg.content, msg.timestamp, msg.isFromMe ? 1 : 0, toolCallsJson]
+      'INSERT OR REPLACE INTO messages (id, chat_id, sender, sender_name, content, timestamp, is_from_me, tool_calls, reasoning) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [msg.id, msg.chatId, msg.sender, msg.senderName, msg.content, msg.timestamp, msg.isFromMe ? 1 : 0, toolCallsJson, msg.reasoning || null]
     )
     await this.updateChatPreview(msg.chatId, msg.content)
   }
 
-  async getMessages(chatId: string, limit: number = 50): Promise<ChatMessage[]> {
+  async getMessages(chatId: string, limit: number = 500): Promise<ChatMessage[]> {
     const resultSet: relationalStore.ResultSet = await this.rdbStore!.querySql(
-      'SELECT * FROM ( SELECT id, chat_id, sender, sender_name, content, timestamp, is_from_me, tool_calls FROM messages WHERE chat_id = ? ORDER BY timestamp DESC LIMIT ? ) ORDER BY timestamp',
+      'SELECT * FROM ( SELECT id, chat_id, sender, sender_name, content, timestamp, is_from_me, tool_calls, reasoning FROM messages WHERE chat_id = ? ORDER BY timestamp DESC LIMIT ? ) ORDER BY timestamp',
       [chatId, limit]
     )
     const messages: ChatMessage[] = []
@@ -152,6 +160,7 @@ export class DatabaseService {
           // ignore parse error
         }
       }
+      const reasoningStr: string = resultSet.getString(resultSet.getColumnIndex('reasoning'))
       const msg: ChatMessage = {
         id: resultSet.getString(resultSet.getColumnIndex('id')),
         chatId: resultSet.getString(resultSet.getColumnIndex('chat_id')),
@@ -160,7 +169,8 @@ export class DatabaseService {
         content: resultSet.getString(resultSet.getColumnIndex('content')),
         timestamp: resultSet.getString(resultSet.getColumnIndex('timestamp')),
         isFromMe: resultSet.getLong(resultSet.getColumnIndex('is_from_me')) === 1,
-        toolCalls: toolCalls
+        toolCalls: toolCalls,
+        reasoning: reasoningStr && reasoningStr.length > 0 ? reasoningStr : undefined
       }
       messages.push(msg)
     }
