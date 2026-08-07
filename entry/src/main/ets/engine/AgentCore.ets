@@ -223,6 +223,7 @@ export class AgentCore {
 
       // ReAct loop
       let iterations: number = 0
+      let consecutiveToolErrors: number = 0
       const allToolRecords: ToolCallRecord[] = []
 
       while (iterations < MAX_ITERATIONS) {
@@ -289,6 +290,41 @@ export class AgentCore {
               toolCall.function.arguments,
               toolCall.id
             )
+
+            // Circuit breaker: 3 consecutive tool failures means something is wrong -
+            // stop looping and report instead of burning minutes of LLM round-trips
+            if (result.isError) {
+              consecutiveToolErrors++
+            } else {
+              consecutiveToolErrors = 0
+            }
+            if (consecutiveToolErrors >= 3) {
+              const breakerMsg: string = '连续 ' + consecutiveToolErrors + ' 次工具调用失败（最近: ' + toolName + '），已停止尝试以避免空转。请检查路径/参数描述是否正确后重试。'
+              Logger.warn('AgentCore', breakerMsg)
+              const breakerEvent: AgentTextEvent = { type: 'text', content: breakerMsg }
+              onEvent(breakerEvent)
+              const breakerRecord: ToolCallRecord = {
+                name: toolName,
+                input: toolCall.function.arguments,
+                result: result.content,
+                isError: true
+              }
+              allToolRecords.push(breakerRecord)
+              const breakerMsg2: ChatMessage = {
+                id: generateId(),
+                chatId: chatId,
+                sender: 'assistant',
+                senderName: 'Lingxi',
+                content: breakerMsg,
+                timestamp: new Date().toISOString(),
+                isFromMe: false,
+                toolCalls: allToolRecords
+              }
+              await dbService.storeMessage(breakerMsg2)
+              const breakerDone: AgentDoneEvent = { type: 'done' }
+              onEvent(breakerDone)
+              return
+            }
 
             // Report to UI
             const toolEvent: AgentToolUseEvent = {

@@ -7,6 +7,7 @@ import { ApiClient } from '../services/ApiClient'
 import { voiceService } from '../services/VoiceService'
 import { ThemeStyle, ThemeColors, getThemeColors } from '../utils/ThemeService'
 import { generateId } from '../utils/TextFormatter'
+import { Logger } from '../utils/Logger'
 import { AgentEvent, ApiConfig, ChatConversation, ToolCallRecord } from '../model/Types'
 import { MarkdownText } from '../components/MarkdownText'
 
@@ -58,6 +59,11 @@ struct ChatPage {
   private scroller: Scroller = new Scroller()
   private typewriterTimer: number = -1
   private destroyed: boolean = false
+  // Stream throttling: merge rapid stream/reasoning deltas into one UI update
+  private uiThrottleTimer: number = -1
+  private pendingThinkingId: string = ''
+  private pendingContent: string = ''
+  private pendingReasoning: string = ''
 
   async aboutToAppear(): Promise<void> {
     this.destroyed = false
@@ -86,6 +92,10 @@ struct ChatPage {
     this.destroyed = true
     this.savePosition()
     this.stopTypewriter()
+    if (this.uiThrottleTimer >= 0) {
+      clearTimeout(this.uiThrottleTimer)
+      this.uiThrottleTimer = -1
+    }
     voiceService.cancelListening()
     voiceService.stopSpeaking()
     this.isListening = false
@@ -320,21 +330,12 @@ struct ChatPage {
     let streamedText: string = ''
     let reasoningText: string = ''
     let replyReceived: boolean = false
-    await agentCore.runAgentStream(text, this.chatId, (event: AgentEvent): void => {
+    try {
+      await agentCore.runAgentStream(text, this.chatId, (event: AgentEvent): void => {
       if (event.type === 'reasoning') {
-        // AI thinking: store it, shown collapsed by default on the final bubble
+        // AI thinking: store it (shown collapsed on the final bubble), throttled UI update
         reasoningText = event.content
-        const ridx: number = this.messages.findIndex((m: DisplayMessage): boolean => m.id === thinkingId)
-        if (ridx >= 0) {
-          const rex: DisplayMessage = this.messages[ridx]
-          this.messages[ridx] = {
-            id: rex.id, content: rex.content,
-            isFromMe: rex.isFromMe, timestamp: rex.timestamp,
-            toolCalls: rex.toolCalls, reasoning: reasoningText,
-            isThinking: rex.isThinking, pairId: pairId
-          }
-          this.syncPage()
-        }
+        this.updateThinkingBubble(thinkingId, streamedText, pairId, reasoningText)
       } else if (event.type === 'stream') {
         streamedText = event.content
         this.updateThinkingBubble(thinkingId, event.content, pairId)
@@ -384,7 +385,13 @@ struct ChatPage {
         if (isFirstMsg) { this.generateChatName(text) }
       }
       this.scrollToBottom()
-    })
+      })
+    } catch (e) {
+      // Safety net: never leave the chat stuck in running state
+      this.isRunning = false
+      this.currentToolInfo = ''
+      this.startTypewriter(thinkingId, '❌ 出错了: ' + (e as Error).message, pairId)
+    }
 
     await this.loadConversations()
   }
@@ -406,22 +413,35 @@ struct ChatPage {
     }
   }
 
-  // Live-update the thinking bubble with streamed text
-  updateThinkingBubble(thinkingId: string, content: string, pairId: string): void {
-    const idx: number = this.messages.findIndex((m: DisplayMessage): boolean => m.id === thinkingId)
-    if (idx >= 0) {
-      const ex: DisplayMessage = this.messages[idx]
-      this.messages[idx] = {
-        id: ex.id,
-        content: content,
-        isFromMe: false,
-        timestamp: ex.timestamp,
-        toolCalls: ex.toolCalls,
-        reasoning: ex.reasoning,
-        isThinking: true,
-        pairId: pairId
-      }
-      this.syncPage()
+  // Live-update the thinking bubble with streamed text - THROTTLED to ~12fps
+  // so rapid SSE deltas (content + reasoning) don't trigger full re-renders per frame
+  updateThinkingBubble(thinkingId: string, content: string, pairId: string, reasoning?: string): void {
+    this.pendingThinkingId = thinkingId
+    if (content.length > 0) {
+      this.pendingContent = content
+    }
+    if (reasoning && reasoning.length > 0) {
+      this.pendingReasoning = reasoning
+    }
+    if (this.uiThrottleTimer < 0) {
+      this.uiThrottleTimer = setTimeout((): void => {
+        this.uiThrottleTimer = -1
+        const idx: number = this.messages.findIndex((m: DisplayMessage): boolean => m.id === this.pendingThinkingId)
+        if (idx >= 0) {
+          const ex: DisplayMessage = this.messages[idx]
+          this.messages[idx] = {
+            id: ex.id,
+            content: this.pendingContent.length > 0 ? this.pendingContent : ex.content,
+            isFromMe: false,
+            timestamp: ex.timestamp,
+            toolCalls: ex.toolCalls,
+            reasoning: this.pendingReasoning.length > 0 ? this.pendingReasoning : ex.reasoning,
+            isThinking: true,
+            pairId: pairId
+          }
+          this.syncPage()
+        }
+      }, 80)
     }
   }
 
