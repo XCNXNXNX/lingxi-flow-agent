@@ -28,7 +28,7 @@ const SCHEMA_WRITE: Record<string, Object> = JSON.parse('{"type":"object","prope
 
 const SCHEMA_READ: Record<string, Object> = JSON.parse('{"type":"object","properties":{"path":{"type":"string","description":"FILE path to read. Only files, NOT directories. Use list_files for directories."}},"required":["path"]}') as Record<string, Object>
 
-const SCHEMA_LIST: Record<string, Object> = JSON.parse('{"type":"object","properties":{"path":{"type":"string","description":"DIRECTORY path to list its contents. Only directories, NOT files. Entries are marked \\u{1F4C1}directory / \\u{1F4C4}file."}},"required":[]}') as Record<string, Object>
+const SCHEMA_LIST: Record<string, Object> = JSON.parse('{"type":"object","properties":{"path":{"type":"string","description":"DIRECTORY path to list its contents. Only directories, NOT files. Entries are marked [folder] for directories and [file] for files."}},"required":[]}') as Record<string, Object>
 
 const SCHEMA_DELETE: Record<string, Object> = JSON.parse('{"type":"object","properties":{"path":{"type":"string","description":"File path to delete"}},"required":["path"]}') as Record<string, Object>
 
