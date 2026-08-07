@@ -139,6 +139,7 @@ export class AgentCore {
   ): Promise<void> {
     try {
       const client: ApiClient = await this.ensureApiClient()
+      const fastMode: boolean = await configService.getFastMode()
 
       await dbService.ensureChat(chatId, '对话')
 
@@ -163,10 +164,16 @@ export class AgentCore {
       if (systemContent.length === 0) {
         systemContent = DEFAULT_BASE_PROMPT
       }
-      systemContent = systemContent + TOOL_PROMPT_PREFIX + this.toolRegistry.getEnabledToolSummary()
-      const packsPrompt: string = skillPackService.getEnabledPacksPrompt(userMessage)
-      if (packsPrompt.length > 0) {
-        systemContent = systemContent + '\n\n' + packsPrompt
+      if (fastMode) {
+        // Fast mode = pure chat (like a plain chatbot): no tool list, no skill packs.
+        // The request becomes lightweight, which queues much faster on busy providers.
+        systemContent = systemContent + '\n\n（当前为纯对话模式：你没有工具可用，直接回答用户即可，不要提及工具。）'
+      } else {
+        systemContent = systemContent + TOOL_PROMPT_PREFIX + this.toolRegistry.getEnabledToolSummary()
+        const packsPrompt: string = skillPackService.getEnabledPacksPrompt(userMessage)
+        if (packsPrompt.length > 0) {
+          systemContent = systemContent + '\n\n' + packsPrompt
+        }
       }
       try {
         const ragChunks: string[] = await ragService.retrieve(userMessage, 3)
@@ -212,8 +219,8 @@ export class AgentCore {
         }
       }
 
-      // Get enabled tool definitions
-      const allTools: ToolDefinition[] = this.toolRegistry.getEnabledToolDefinitions()
+      // Get enabled tool definitions (empty in fast mode = pure chat)
+      const allTools: ToolDefinition[] = fastMode ? [] : this.toolRegistry.getEnabledToolDefinitions()
 
       // Eager tool calling results: tool_call_id -> in-flight promise, shared across
       // iterations so a stream fallback to non-streaming never re-executes a tool

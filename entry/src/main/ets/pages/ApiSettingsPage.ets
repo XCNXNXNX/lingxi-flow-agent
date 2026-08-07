@@ -22,6 +22,7 @@ struct ApiSettingsPage {
   @State formEmbedKey: string = ''
   @State mcpUrl: string = ''
   @State mcpSaved: boolean = false
+  @State fastMode: boolean = false
 
   private col(): ThemeColors {
     return getThemeColors(this.currentTheme)
@@ -36,10 +37,16 @@ struct ApiSettingsPage {
     const active: ApiProfile | null = await configService.getActiveProfile()
     this.activeId = active ? active.id : ''
     this.mcpUrl = await configService.getMcpUrl()
+    this.fastMode = await configService.getFastMode()
     // Prefill form with active profile if form is empty
     if (active && this.formBaseUrl.length === 0) {
       this.fillForm(active)
     }
+  }
+
+  async toggleFastMode(enabled: boolean): Promise<void> {
+    await configService.saveFastMode(enabled)
+    promptAction.showToast({ message: enabled ? '已开启极速模式：纯对话秒回（工具暂不可用）' : '已关闭极速模式：工具已恢复', duration: 2500 })
   }
 
   fillForm(p: ApiProfile): void {
@@ -306,6 +313,28 @@ struct ApiSettingsPage {
               .width('100%').height(44)
               .margin({ top: $r('app.float.spacing_md') })
               .onClick(() => { this.saveProfile() })
+
+            // Fast mode: pure chat - lightweight requests queue much faster
+            Row() {
+              Column() {
+                Text('极速模式')
+                  .fontSize($r('app.float.font_size_body'))
+                  .fontColor(this.col().textPrimary).fontWeight(FontWeight.Medium)
+                Text('纯对话模式：不加载工具定义，请求更轻、响应更快（工具/技能不可用）')
+                  .fontSize($r('app.float.font_size_caption'))
+                  .fontColor(this.col().textTertiary).margin({ top: 2 })
+              }
+              .alignItems(HorizontalAlign.Start).layoutWeight(1)
+              Toggle({ type: ToggleType.Switch, isOn: this.fastMode })
+                .selectedColor(this.col().accent)
+                .onChange((isOn: boolean): void => { this.toggleFastMode(isOn) })
+            }
+            .width('100%')
+            .padding($r('app.float.spacing_md'))
+            .backgroundColor(this.col().surface)
+            .borderRadius($r('app.float.radius_md'))
+            .border({ width: 1, color: this.col().divider })
+            .margin({ top: $r('app.float.spacing_md') })
 
             // API library
             Text('API 库（点击卡片切换，新对话生效）')

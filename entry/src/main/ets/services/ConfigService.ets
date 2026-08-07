@@ -16,6 +16,7 @@ const KEY_EMBED_KEY = 'embedding_key'
 const KEY_EMBED_URL = 'embedding_url'
 const KEY_MCP_URL = 'mcp_url'
 const KEY_SYSTEM_PROMPT = 'system_prompt'
+const KEY_FAST_MODE = 'fast_mode'
 const KEY_API_PROFILES = 'api_profiles'
 const KEY_ACTIVE_PROFILE = 'active_api_profile'
 
@@ -327,6 +328,17 @@ export class ConfigService {
 
   async getSystemPrompt(): Promise<string> {
     return await this.pref!.get(KEY_SYSTEM_PROMPT, '') as string
+  }
+
+  // --- Fast mode (pure chat, no tools - lightweight requests queue much faster) ---
+
+  async getFastMode(): Promise<boolean> {
+    return await this.pref!.get(KEY_FAST_MODE, false) as boolean
+  }
+
+  async saveFastMode(enabled: boolean): Promise<void> {
+    await this.pref!.put(KEY_FAST_MODE, enabled)
+    await this.pref!.flush()
   }
 
   async saveSystemPrompt(prompt: string): Promise<void> {
