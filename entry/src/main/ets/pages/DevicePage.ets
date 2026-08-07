@@ -196,7 +196,7 @@ struct DevicePage {
                   .alignItems(HorizontalAlign.Start).layoutWeight(1)
                   Circle()
                     .width(10).height(10)
-                    .fill(dev.status === DeviceConnectionStatus.CONNECTED ? '#10B981' : this.col().textTertiary)
+                    .fill(dev.status === DeviceConnectionStatus.CONNECTED ? '#047857' : this.col().textTertiary)
                 }
                 .width('100%')
                 .padding($r('app.float.spacing_md'))

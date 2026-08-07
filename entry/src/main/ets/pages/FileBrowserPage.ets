@@ -270,7 +270,7 @@ struct FileBrowserPage {
   actBtn(label: string, onClick: () => void, isDanger?: boolean) {
     Button(label)
       .fontSize($r('app.float.font_size_body'))
-      .fontColor(isDanger ? '#EF4444' : this.col().textPrimary)
+      .fontColor(isDanger ? '#DC2626' : this.col().textPrimary)
       .backgroundColor(this.col().surfaceVariant)
       .borderRadius($r('app.float.radius_md')).width('100%').height(44)
       .margin({ bottom: $r('app.float.spacing_sm') })

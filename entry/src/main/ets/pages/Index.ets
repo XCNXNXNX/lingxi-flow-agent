@@ -124,7 +124,7 @@ struct Index {
           Row() {
             Text('Lingxi')
               .fontSize(30)
-              .fontColor(this.col().textPrimary)
+              .fontColor(this.col().textOnPrimary)
               .fontWeight(FontWeight.Bold)
               .fontFamily('HarmonyOS Sans')
               .letterSpacing(2)

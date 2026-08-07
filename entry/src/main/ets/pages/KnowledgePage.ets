@@ -136,7 +136,7 @@ struct KnowledgePage {
           if (this.toastMsg.length > 0) {
             Text(this.toastMsg)
               .fontSize($r('app.float.font_size_small'))
-              .fontColor('#EF4444')
+              .fontColor('#DC2626')
               .margin({ bottom: $r('app.float.spacing_sm') })
           }
 

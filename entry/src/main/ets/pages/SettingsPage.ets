@@ -204,7 +204,7 @@ struct SettingsPage {
               Row() {
                 Circle()
                   .width(8).height(8)
-                  .fill(skill.active ? '#10B981' : this.col().textTertiary)
+                  .fill(skill.active ? '#047857' : this.col().textTertiary)
                   .margin({ right: $r('app.float.spacing_sm') })
 
                 Column() {

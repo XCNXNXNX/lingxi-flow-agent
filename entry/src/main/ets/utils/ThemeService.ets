@@ -23,7 +23,7 @@ export class ThemeColors {
   glassInput: string = 'rgba(255,255,255,0.08)'
   glassOverlay: string = 'rgba(22,25,32,0.88)'
   gradientStart: string = '#bd4531'
-  gradientEnd: string = '#e05a45'
+  gradientEnd: string = '#d1432e'
   badgeBg: string = 'rgba(189,69,49,0.1)'
   tabBlock: string = 'rgba(255,255,255,0.04)'
 }

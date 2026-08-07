@@ -276,7 +276,7 @@ struct ResultPage {
 
       if (!this.hasApiKey) {
         Text('未配置 API Key，请在对话页设置')
-          .fontSize($r('app.float.font_size_caption')).fontColor('#F59E0B')
+          .fontSize($r('app.float.font_size_caption')).fontColor('#92400E')
           .width('100%')
           .padding({ left: $r('app.float.spacing_md'), top: $r('app.float.spacing_sm'),
             bottom: $r('app.float.spacing_sm') })
@@ -401,7 +401,7 @@ struct ResultPage {
                   Text(step.status === TaskStatus.FAILED ? '✗' : '✓')
                     .fontSize(10).fontColor('#FFFFFF')
                     .width(22).height(22).borderRadius(11)
-                    .backgroundColor(step.status === TaskStatus.FAILED ? '#EF4444' : '#10B981')
+                    .backgroundColor(step.status === TaskStatus.FAILED ? '#DC2626' : '#047857')
                     .textAlign(TextAlign.Center)
                     .margin({ right: $r('app.float.spacing_sm') })
 

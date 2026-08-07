@@ -505,7 +505,7 @@ struct ChatPage {
 
           Button('API')
             .fontSize($r('app.float.font_size_caption'))
-            .fontColor(this.hasApiKey ? '#10B981' : '#F59E0B')
+            .fontColor(this.hasApiKey ? '#047857' : '#92400E')
             .backgroundColor(this.col().surfaceVariant)
             .borderRadius($r('app.float.radius_sm'))
             .padding({ left: $r('app.float.spacing_sm'), right: $r('app.float.spacing_sm') })
@@ -522,7 +522,7 @@ struct ChatPage {
             this.menuBtn('＋ 新对话', () => { this.newChat() }, this.col())
             this.menuBtn('☰ 对话列表', () => { this.showConversations = true; this.showChatMenu = false }, this.col())
             this.menuBtn('✎ 重命名', () => { this.startRename() }, this.col())
-            this.menuBtn('✕ 删除', () => { this.deleteChat() }, this.col(), '#EF4444')
+            this.menuBtn('✕ 删除', () => { this.deleteChat() }, this.col(), '#DC2626')
           }
           .width(120)
           .padding($r('app.float.spacing_sm'))
@@ -545,7 +545,7 @@ struct ChatPage {
                     ForEach(msg.toolCalls, (tc: ToolCallRecord): void => {
                       Text((tc.isError ? '✗ ' : '◎ ') + tc.name)
                         .fontSize(11)
-                        .fontColor(tc.isError ? '#EF4444' : this.col().textTertiary)
+                        .fontColor(tc.isError ? '#DC2626' : this.col().textTertiary)
                         .padding({ right: 8 })
                     })
                   }
@@ -576,7 +576,7 @@ struct ChatPage {
                       Row() {
                         if (this.deleteConfirmPair === msg.pairId) {
                           Text('确认删除本轮?')
-                            .fontSize(10).fontColor('#EF4444')
+                            .fontSize(10).fontColor('#DC2626')
                             .margin({ right: 4 })
                             .onClick(() => { this.deleteMessagePair(msg.pairId!) })
                           Text('取消')
@@ -628,7 +628,7 @@ struct ChatPage {
               .width(24).height(24)
           }
           .width(44).height(44)
-          .backgroundColor(this.isListening ? '#EF4444' : this.col().surfaceVariant)
+          .backgroundColor(this.isListening ? '#DC2626' : this.col().surfaceVariant)
           .margin({ right: 8 })
           .animation({ duration: 180, curve: Curve.EaseOut })
           .onClick(() => { this.toggleVoiceInput() })
