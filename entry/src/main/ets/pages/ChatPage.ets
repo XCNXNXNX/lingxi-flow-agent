@@ -30,6 +30,7 @@ const PAGE_SIZE: number = 15
 struct ChatPage {
   @StorageLink('themeStyle') currentTheme: ThemeStyle = 'lingxi'
   @State messages: DisplayMessage[] = []
+  @State pagedMessages: DisplayMessage[] = []
   @State page: number = 1
   @State inputText: string = ''
   @State isRunning: boolean = false
@@ -121,17 +122,19 @@ struct ChatPage {
   }
 
   async switchChat(conv: ChatConversation): Promise<void> {
+    // Save the previous chat's scroll position before switching
+    await this.savePosition()
     this.chatId = conv.id
     this.chatName = conv.name
     this.showConversations = false
     await this.loadMessages()
-    this.scrollToBottom()
   }
 
   async newChat(): Promise<void> {
     this.chatId = generateId()
     this.chatName = '新对话'
     this.messages = []
+    this.syncPage()
     this.showConversations = false
     this.showChatMenu = false
   }
@@ -140,6 +143,7 @@ struct ChatPage {
     await dbService.deleteChat(this.chatId)
     this.showChatMenu = false
     this.messages = []
+    this.syncPage()
     await this.loadConversations()
     if (this.conversations.length > 0) {
       this.chatId = this.conversations[0].id
@@ -205,6 +209,7 @@ struct ChatPage {
       })
     }
     this.messages = displayMsgs
+    this.syncPage()
 
     // Restore page (clamped) then scroll to saved offset, else bottom
     const total: number = this.totalPages()
@@ -224,13 +229,15 @@ struct ChatPage {
 
   // Page window for the current page (latest messages are page 1)
   getPageMessages(): DisplayMessage[] {
+    return this.pagedMessages
+  }
+
+  // Recompute the paged window from the full message array
+  syncPage(): void {
     const total: number = this.messages.length
     const end: number = total - (this.page - 1) * PAGE_SIZE
     const start: number = Math.max(0, end - PAGE_SIZE)
-    if (start >= end) {
-      return []
-    }
-    return this.messages.slice(start, end)
+    this.pagedMessages = this.messages.slice(start, Math.max(start, end))
   }
 
   totalPages(): number {
@@ -240,8 +247,9 @@ struct ChatPage {
   goPage(p: number): void {
     const total: number = this.totalPages()
     this.page = p < 1 ? 1 : (p > total ? total : p)
+    this.syncPage()
     setTimeout((): void => {
-      if (!this.destroyed && this.getPageMessages().length > 0) {
+      if (!this.destroyed && this.pagedMessages.length > 0) {
         this.scroller.scrollToIndex(0)
       }
     }, 80)
@@ -276,6 +284,7 @@ struct ChatPage {
     this.currentToolInfo = ''
     // Sending jumps back to the newest page
     this.page = 1
+    this.syncPage()
 
     const pairId: string = 'pair_' + Date.now()
     const isFirstMsg: boolean = this.messages.length === 0
@@ -298,6 +307,7 @@ struct ChatPage {
       isThinking: true,
       pairId: pairId
     })
+    this.syncPage()
     this.scrollToBottom()
 
     if (!this.hasApiKey) {
@@ -323,6 +333,7 @@ struct ChatPage {
             toolCalls: rex.toolCalls, reasoning: reasoningText,
             isThinking: rex.isThinking, pairId: pairId
           }
+          this.syncPage()
         }
       } else if (event.type === 'stream') {
         streamedText = event.content
@@ -342,6 +353,7 @@ struct ChatPage {
             toolCalls: ex.toolCalls, reasoning: reasoningText,
             isThinking: ex.isThinking, pairId: pairId
           }
+          this.syncPage()
         }
       } else if (event.type === 'text') {
         replyReceived = true
@@ -390,6 +402,7 @@ struct ChatPage {
         isThinking: false,
         pairId: pairId
       }
+      this.syncPage()
     }
   }
 
@@ -408,6 +421,7 @@ struct ChatPage {
         isThinking: true,
         pairId: pairId
       }
+      this.syncPage()
     }
   }
 
@@ -450,6 +464,7 @@ struct ChatPage {
           pairId: pairId
         }
       }
+      this.syncPage()
       this.scrollToBottom()
     }, speed)
   }
@@ -654,6 +669,7 @@ struct ChatPage {
                         isThinking: tm.isThinking, showTools: !tm.showTools,
                         showReasoning: tm.showReasoning, pairId: tm.pairId
                       }
+                      this.syncPage()
                     }
                   })
                   if (msg.showTools) {
@@ -721,6 +737,7 @@ struct ChatPage {
                             isThinking: rm.isThinking, showTools: rm.showTools,
                             showReasoning: !rm.showReasoning, pairId: rm.pairId
                           }
+                          this.syncPage()
                         }
                       })
                       if (msg.showReasoning) {

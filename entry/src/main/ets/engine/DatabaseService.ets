@@ -34,13 +34,6 @@ const CREATE_SCHEMA: string = `
   CREATE INDEX IF NOT EXISTS idx_msg_timestamp ON messages(timestamp);
   CREATE INDEX IF NOT EXISTS idx_msg_chat ON messages(chat_id);
 
-  try {
-    // Upgrade path: add reasoning column for older databases
-    await this.rdbStore!.executeSql('ALTER TABLE messages ADD COLUMN reasoning TEXT')
-  } catch (_e) {
-    // Column already exists - ignore
-  }
-
   CREATE TABLE IF NOT EXISTS scheduled_tasks (
     id TEXT PRIMARY KEY,
     chat_id TEXT NOT NULL,
@@ -93,6 +86,12 @@ export class DatabaseService {
     const statements: string[] = CREATE_SCHEMA.split(';').filter((s: string): boolean => s.trim().length > 0)
     for (let i: number = 0; i < statements.length; i++) {
       await this.rdbStore.executeSql(statements[i].trim())
+    }
+    // Upgrade path: add reasoning column for older databases (ignore if exists)
+    try {
+      await this.rdbStore.executeSql('ALTER TABLE messages ADD COLUMN reasoning TEXT')
+    } catch (_e) {
+      // Column already exists - ignore
     }
     Logger.info('DatabaseService', 'initialized')
   }
