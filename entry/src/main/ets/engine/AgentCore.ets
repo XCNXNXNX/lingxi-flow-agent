@@ -270,7 +270,13 @@ export class AgentCore {
               response = await client.sendMessage(apiMessages, allTools)
             }
           } catch (e) {
-            Logger.warn('AgentCore', 'stream failed, retrying non-stream: ' + (e as Error).message)
+            const errMsg: string = (e as Error).message
+            if (errMsg.indexOf('排队超时') >= 0) {
+              // Queue timeout: retrying non-stream would just queue AGAIN (double wait).
+              // Fail fast so the user sees the error instead of waiting minutes silently.
+              throw e as Error
+            }
+            Logger.warn('AgentCore', 'stream failed, retrying non-stream: ' + errMsg)
             response = await client.sendMessage(apiMessages, allTools)
           }
         } else {

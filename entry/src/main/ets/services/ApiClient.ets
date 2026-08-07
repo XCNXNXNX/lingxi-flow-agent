@@ -179,7 +179,7 @@ export class ApiClient {
           },
           extraData: JSON.stringify(body),
           connectTimeout: 30000,
-          readTimeout: 120000
+          readTimeout: 180000
         })
 
         if (response.responseCode === 429) {
@@ -205,12 +205,17 @@ export class ApiClient {
         httpRequest.destroy()
         return this.parseResponse(result)
       } catch (e) {
-        if (retries >= maxRetries) {
+        const errMsg: string = (e as Error).message
+        const isTimeout: boolean = errMsg.indexOf('timeout') >= 0 || errMsg.indexOf('超时') >= 0 ||
+          errMsg.indexOf('Timeout') >= 0
+        if (isTimeout || retries >= maxRetries) {
+          // Timeout errors mean the provider is queueing - retrying just queues
+          // again and multiplies the wait (120s x N). Fail fast instead.
           httpRequest.destroy()
           throw e as Error
         }
         retries++
-        Logger.warn('ApiClient', 'request failed, retry ' + retries + ': ' + (e as Error).message)
+        Logger.warn('ApiClient', 'request failed, retry ' + retries + ': ' + errMsg)
         const waitMs: number = Math.pow(2, retries) * 1000
         await sleepMs(waitMs)
       }
@@ -323,17 +328,20 @@ export class ApiClient {
     const eagerFired: Set<number> = new Set()
 
     return new Promise<ApiResponse>((resolve: (resp: ApiResponse) => void, reject: (err: Error) => void): void => {
-      // Watchdog: if no data arrives for 90s, fail instead of hanging forever
+      // Watchdog: DeepSeek queues requests during peak hours - first token can take
+      // 1-3 minutes. 90s was too aggressive: killing the stream then retrying
+      // non-streaming meant QUEUEING TWICE (double the wait). Now 180s, and queue
+      // timeouts fail fast instead of falling back (see AgentCore).
       const watchdog: number = setInterval((): void => {
         if (resolved) {
           clearInterval(watchdog)
           return
         }
-        if (Date.now() - lastDataAt > 90000) {
+        if (Date.now() - lastDataAt > 180000) {
           resolved = true
           clearInterval(watchdog)
           httpRequest.destroy()
-          reject(new Error('流式响应超时（90 秒无数据）'))
+          reject(new Error('模型排队超时（180 秒未收到数据，服务繁忙），请稍后重试'))
         }
       }, 15000)
 
