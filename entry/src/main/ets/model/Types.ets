@@ -265,7 +265,20 @@ export class DeviceInfo {
   }
 }
 
-// --- Routing ---
+// --- Skill packs (JSON skill packages, shareable as files) ---
+
+export interface SkillPack {
+  schemaVersion: number
+  name: string
+  displayName: string
+  version: string
+  description: string
+  author: string
+  tags: string[]
+  prompt: string
+  requires: string[]
+  enabled: boolean
+}
 
 export class PageParams {
   presetText?: string

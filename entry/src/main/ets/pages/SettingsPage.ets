@@ -3,7 +3,11 @@ import { ThemeService, ThemeStyle, ThemeColors, getThemeColors } from '../utils/
 import { dbService } from '../engine/DatabaseService'
 import { agentCore } from '../engine/AgentCore'
 import { configService } from '../services/ConfigService'
+import { skillPackService } from '../services/SkillPackService'
+import { picker } from '@kit.CoreFileKit'
+import { common } from '@kit.AbilityKit'
 import { SkillGroup, SkillToolInfo } from '../engine/ToolRegistry'
+import { SkillPack } from '../model/Types'
 
 interface MemoryItem {
   key: string
@@ -34,11 +38,55 @@ struct SettingsPage {
   @State skillGroups: SkillGroup[] = []
   @State promptText: string = ''
   @State promptSaved: boolean = false
+  @State skillPacks: SkillPack[] = []
+  @State showPacks: boolean = false
+  @State packMsg: string = ''
 
   aboutToAppear(): void {
     this.loadSkills()
     this.loadMemoriesData()
     this.loadPrompt()
+    this.loadPacks()
+  }
+
+  async loadPacks(): Promise<void> {
+    this.skillPacks = skillPackService.getPacks()
+  }
+
+  async togglePack(name: string, enabled: boolean): Promise<void> {
+    await skillPackService.setEnabled(name, enabled)
+    await this.loadPacks()
+  }
+
+  async importPack(): Promise<void> {
+    try {
+      const context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext
+      const options: picker.DocumentSelectOptions = {
+        fileSuffixFilters: ['.json']
+      }
+      const pickerInstance: picker.DocumentViewPicker = new picker.DocumentViewPicker(context)
+      const uris: string[] = await pickerInstance.select(options)
+      if (!uris || uris.length === 0) {
+        return
+      }
+      const msg: string = await skillPackService.importFromUri(uris[0])
+      this.packMsg = msg
+      await this.loadPacks()
+      promptAction.showToast({ message: msg, duration: 2500 })
+    } catch (e) {
+      promptAction.showToast({ message: '导入失败: ' + (e as Error).message, duration: 2500 })
+    }
+  }
+
+  async exportPack(name: string): Promise<void> {
+    const msg: string = await skillPackService.exportPack(name)
+    promptAction.showToast({ message: msg, duration: 2500 })
+  }
+
+  async removePack(name: string): Promise<void> {
+    await skillPackService.removePack(name)
+    await this.loadPacks()
+    promptAction.showToast({ message: '已删除技能包', duration: 1500 })
   }
 
   async loadSkills(): Promise<void> {
@@ -365,6 +413,95 @@ struct SettingsPage {
           .border({ width: 1, color: this.col().divider })
           .margin({ left: $r('app.float.spacing_lg'), right: $r('app.float.spacing_lg'),
             top: $r('app.float.spacing_sm') })
+
+          // Skill packs section (JSON skill packages, shareable)
+          Row() {
+            Text('技能包')
+              .fontSize($r('app.float.font_size_body'))
+              .fontColor(this.col().textPrimary)
+              .fontWeight(FontWeight.Bold)
+              .layoutWeight(1)
+            Text(this.showPacks ? '收起' : '管理')
+              .fontSize($r('app.float.font_size_small'))
+              .fontColor(this.col().accent)
+              .onClick(() => { this.showPacks = !this.showPacks })
+          }
+          .width('100%')
+          .padding({ left: $r('app.float.spacing_lg'), right: $r('app.float.spacing_lg'),
+            top: $r('app.float.spacing_lg') })
+
+          if (this.showPacks) {
+            Text('技能包是 JSON 文件：导入他人分享的包，或导出自己的配置分享出去')
+              .fontSize($r('app.float.font_size_caption'))
+              .fontColor(this.col().textTertiary)
+              .width('100%')
+              .padding({ left: $r('app.float.spacing_lg'), top: $r('app.float.spacing_sm'),
+                bottom: $r('app.float.spacing_sm') })
+
+            Row() {
+              Button('导入技能包')
+                .fontSize($r('app.float.font_size_caption')).fontColor('#FFFFFF')
+                .backgroundColor(this.col().accent)
+                .borderRadius($r('app.float.radius_sm')).height(32)
+                .onClick(() => { this.importPack() })
+              Text('从文件/聊天中选择 .json 技能包')
+                .fontSize($r('app.float.font_size_caption')).fontColor(this.col().textTertiary)
+                .margin({ left: $r('app.float.spacing_sm') })
+            }
+            .width('100%')
+            .padding({ left: $r('app.float.spacing_lg'), right: $r('app.float.spacing_lg'),
+              bottom: $r('app.float.spacing_sm') })
+
+            if (this.skillPacks.length === 0) {
+              Text('暂无技能包')
+                .fontSize($r('app.float.font_size_caption')).fontColor(this.col().textTertiary)
+                .width('100%').textAlign(TextAlign.Center)
+                .padding($r('app.float.spacing_md'))
+            } else {
+              ForEach(this.skillPacks, (pack: SkillPack) => {
+                Column() {
+                  Row() {
+                    Column() {
+                      Text(pack.displayName)
+                        .fontSize($r('app.float.font_size_body'))
+                        .fontColor(this.col().textPrimary).fontWeight(FontWeight.Medium)
+                      Text(pack.description)
+                        .fontSize($r('app.float.font_size_small'))
+                        .fontColor(this.col().textTertiary).margin({ top: 2 })
+                        .maxLines(2).textOverflow({ overflow: TextOverflow.Ellipsis })
+                    }
+                    .alignItems(HorizontalAlign.Start).layoutWeight(1)
+                    Toggle({ type: ToggleType.Switch, isOn: pack.enabled })
+                      .selectedColor(this.col().accent)
+                      .onChange((isOn: boolean): void => { this.togglePack(pack.name, isOn) })
+                  }
+                  .width('100%')
+
+                  Row() {
+                    Text('v' + pack.version + ' · ' + pack.author)
+                      .fontSize($r('app.float.font_size_caption')).fontColor(this.col().textTertiary)
+                    Blank()
+                    Text('导出')
+                      .fontSize($r('app.float.font_size_caption')).fontColor(this.col().accent)
+                      .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                      .onClick(() => { this.exportPack(pack.name) })
+                    Text('删除')
+                      .fontSize($r('app.float.font_size_caption')).fontColor('#DC2626')
+                      .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                      .onClick(() => { this.removePack(pack.name) })
+                  }
+                  .width('100%').margin({ top: $r('app.float.spacing_sm') })
+                }
+                .width('100%')
+                .padding($r('app.float.spacing_md'))
+                .backgroundColor(this.col().surface)
+                .borderRadius($r('app.float.radius_md'))
+                .border({ width: 1, color: this.col().divider })
+                .margin({ left: $r('app.float.spacing_lg'), right: $r('app.float.spacing_lg'),
+                  top: $r('app.float.spacing_sm') })
+              })
+            }
+          }
 
           // Device collaboration entry
           Row() {

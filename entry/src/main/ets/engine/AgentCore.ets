@@ -9,6 +9,7 @@ import { ToolRegistry } from './ToolRegistry'
 import { dbService } from './DatabaseService'
 import { configService } from '../services/ConfigService'
 import { ragService } from './RagService'
+import { skillPackService } from '../services/SkillPackService'
 import { registerFileTools, initFileTools } from '../tools/FileTools'
 import { registerReminderTools, initReminderTools } from '../tools/ReminderTools'
 import { registerCalendarTools, initCalendarTools } from '../tools/CalendarTools'
@@ -74,6 +75,7 @@ export class AgentCore {
     await initReminderTools()
     initMemoryTools(filesDir)
     initCalendarTools(context)
+    await skillPackService.init(context, filesDir)
     registerFileTools(this.toolRegistry)
     registerReminderTools(this.toolRegistry)
     registerCalendarTools(this.toolRegistry)
@@ -167,6 +169,10 @@ export class AgentCore {
         systemContent = DEFAULT_BASE_PROMPT
       }
       systemContent = systemContent + TOOL_PROMPT_PREFIX + this.toolRegistry.getEnabledToolSummary()
+      const packsPrompt: string = skillPackService.getEnabledPacksPrompt()
+      if (packsPrompt.length > 0) {
+        systemContent = systemContent + '\n\n' + packsPrompt
+      }
       try {
         const ragChunks: string[] = await ragService.retrieve(userMessage, 3)
         if (ragChunks.length > 0) {
