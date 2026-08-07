@@ -12,6 +12,11 @@ interface ApiRequestBody {
   max_tokens: number
   temperature: number
   stream: boolean
+  thinking?: ThinkingControl
+}
+
+interface ThinkingControl {
+  type: string
 }
 
 interface ApiRequestMessage {
@@ -249,6 +254,15 @@ export class ApiClient {
       max_tokens: this.config.maxTokens,
       temperature: this.config.temperature,
       stream: stream
+    }
+    // DeepSeek API defaults to thinking mode (enabled) - each request spends minutes
+    // on hidden reasoning before answering. Disable it for non-reasoner models so
+    // simple questions get instant replies (deepseek-reasoner keeps thinking on purpose).
+    const isDeepSeek: boolean = this.config.baseUrl.indexOf('deepseek') >= 0
+    const isReasoner: boolean = this.config.model.indexOf('reasoner') >= 0
+    if (isDeepSeek && !isReasoner) {
+      const thinkingCtl: ThinkingControl = { type: 'disabled' }
+      body.thinking = thinkingCtl
     }
     if (tools && tools.length > 0) {
       const toolList: ApiRequestTool[] = []

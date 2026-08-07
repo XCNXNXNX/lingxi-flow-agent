@@ -279,17 +279,21 @@ export class AgentCore {
           }
           apiMessages.push(assistApiMsg)
 
-          // Execute each tool call
-          for (let i: number = 0; i < assistantMessage.toolCalls.length; i++) {
-            const toolCall: ToolCall = assistantMessage.toolCalls[i]
-            const toolName: string = toolCall.function.name
-            Logger.info('AgentCore', 'Tool: ' + toolName + '(' + toolCall.function.arguments + ')')
+          // Execute tool calls IN PARALLEL (they are independent - model returns them
+          // together). Serial execution multiplied latency per tool (web searches etc).
+          const toolCallList: ToolCall[] = assistantMessage.toolCalls
+          const execPromises: Promise<ToolResult>[] = []
+          for (let p: number = 0; p < toolCallList.length; p++) {
+            const tc: ToolCall = toolCallList[p]
+            Logger.info('AgentCore', 'Tool: ' + tc.function.name + '(' + tc.function.arguments + ')')
+            execPromises.push(this.toolRegistry.executeTool(tc.function.name, tc.function.arguments, tc.id))
+          }
+          const execResults: ToolResult[] = await Promise.all(execPromises)
 
-            const result: ToolResult = await this.toolRegistry.executeTool(
-              toolName,
-              toolCall.function.arguments,
-              toolCall.id
-            )
+          for (let i: number = 0; i < execResults.length; i++) {
+            const toolCall: ToolCall = toolCallList[i]
+            const toolName: string = toolCall.function.name
+            const result: ToolResult = execResults[i]
 
             // Circuit breaker: 3 consecutive tool failures means something is wrong -
             // stop looping and report instead of burning minutes of LLM round-trips
