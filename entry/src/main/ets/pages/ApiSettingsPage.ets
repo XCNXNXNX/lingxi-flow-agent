@@ -343,13 +343,14 @@ struct ApiSettingsPage {
             .border({ width: 1, color: this.col().divider })
             .margin({ top: $r('app.float.spacing_md') })
 
-            // Non-stream compatibility mode: emulator/network stacks buffer SSE
+            // Non-stream mode: DEFAULT ON - lightweight agent tasks finish in seconds,
+            // streaming adds nothing but emulator/SSE-buffering risk
             Row() {
               Column() {
                 Text('兼容模式（非流式）')
                   .fontSize($r('app.float.font_size_body'))
                   .fontColor(this.col().textPrimary).fontWeight(FontWeight.Medium)
-                Text('响应改为一次性返回（模拟器或网络环境对流式数据缓冲时，建议开启）')
+                Text('默认开启：一次性返回完整响应，秒级完成（轻型任务无需流式）。真机想体验打字效果可关闭')
                   .fontSize($r('app.float.font_size_caption'))
                   .fontColor(this.col().textTertiary).margin({ top: 2 })
               }

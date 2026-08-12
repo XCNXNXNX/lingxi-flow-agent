@@ -342,10 +342,12 @@ export class ConfigService {
     await this.pref!.flush()
   }
 
-  // --- Non-stream compatibility mode (emulator/network stacks that buffer SSE) ---
+  // --- Non-stream mode (DEFAULT: on). Lingxi does lightweight jobs in seconds;
+  // streaming adds nothing but risk on emulator/network stacks that buffer SSE.
+  // Users can still enable streaming for the typewriter effect on real devices. ---
 
   async getNonStreamMode(): Promise<boolean> {
-    return await this.pref!.get(KEY_NONSTREAM_MODE, false) as boolean
+    return await this.pref!.get(KEY_NONSTREAM_MODE, true) as boolean
   }
 
   async saveNonStreamMode(enabled: boolean): Promise<void> {

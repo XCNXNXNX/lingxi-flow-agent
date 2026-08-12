@@ -783,6 +783,17 @@ struct ChatPage {
                       accentColor: msg.isFromMe ? 'rgba(255,255,255,0.7)' : this.col().accent
                     })
 
+                    // AI-generated content explicit label (compliance: 人工智能生成合成内容标识)
+                    if (!msg.isFromMe && !msg.isThinking && msg.content.length > 0) {
+                      Text('✨ AI 生成')
+                        .fontSize(9)
+                        .fontColor(this.col().textTertiary)
+                        .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                        .backgroundColor('rgba(127,127,127,0.1)')
+                        .borderRadius($r('app.float.radius_sm'))
+                        .margin({ top: 6 })
+                    }
+
                     // Thinking (reasoning) - collapsed by default, tap to expand
                     if (!msg.isFromMe && !msg.isThinking && msg.reasoning && msg.reasoning.length > 0) {
                       Row() {
