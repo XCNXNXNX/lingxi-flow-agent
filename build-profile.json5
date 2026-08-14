@@ -5,13 +5,13 @@
         "name": "release",
         "type": "HarmonyOS",
         "material": {
-          "storeFile": "C:/Huawei/signing/lingxi-release.p12",
-          "storePassword": "0000001F793CC4FD085056484CBD7D60DA87814CA8E113FD46441C00E1EEF0774225235E39B73F152DA6A8665BF17F",
+          "storeFile": "请填入你的签名文件路径(如 /path/to/lingxi-release.p12)",
+          "storePassword": "请填入你的签名store密码",
           "keyAlias": "lingxi-release",
-          "keyPassword": "0000001F46DB1E5FB0AA45CEC4D1929696E5E44F42FEDE85CC9855371BB7A77B1C57B05D3FC31D4415EE2E189C0397",
+          "keyPassword": "请填入你的签名key密码",
           "signAlg": "SHA256withECDSA",
-          "profile": "C:/Huawei/signing/lingxi-release.p7b",
-          "certpath": "C:/Huawei/signing/lingxi-release.cer"
+          "profile": "请填入你的Profile文件路径",
+          "certpath": "请填入你的证书文件路径"
         }
       }
     ],
