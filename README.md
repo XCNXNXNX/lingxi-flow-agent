@@ -1,20 +1,39 @@
+<div align="center">
+
+<img src="docs/screenshots/icon.png" width="120" alt="灵犀流序 Logo">
+
 # 🦞 灵犀流序（Lingxi Flow）
 
-> 运行在 **HarmonyOS NEXT** 上的 AI 智能体（Agent）个人助理应用 —— 用一句话描述需求，AI 自主规划、调用系统工具、一步步帮你完成任务。
+**运行在 HarmonyOS NEXT 上的 AI 智能体（Agent）个人助理**
+
+用一句话描述需求，AI 自主规划、调用系统工具，一步步帮你完成任务。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![HarmonyOS](https://img.shields.io/badge/HarmonyOS-NEXT-0078D7)
+![Language](https://img.shields.io/badge/Language-ArkTS-ff69b4)
+![API](https://img.shields.io/badge/API-12+-green)
 
-2026 中国高校计算机大赛 · 人工智能创意赛（鸿蒙赛道）参赛作品。
+*2026 中国高校计算机大赛 · 人工智能创意赛（鸿蒙赛道）参赛作品*
+
+</div>
+
+---
 
 ## 📱 预览
 
-| AI 对话 | 任务与提醒 | 知识库 |
+| 灵犀主页 | 龙虾主题 | AI 对话 |
 | --- | --- | --- |
-| <img src="docs/screenshots/screen-chat.png" width="200"> | <img src="docs/screenshots/screen-tasks.png" width="200"> | <img src="docs/screenshots/screen-knowledge.png" width="200"> |
+| <img src="docs/screenshots/主页.png" width="220"> | <img src="docs/screenshots/龙虾主题主页.png" width="220"> | <img src="docs/screenshots/screen-chat.png" width="220"> |
 
-| 文件管理 | 更多能力 |
-| --- | --- |
-| <img src="docs/screenshots/screen-file.png" width="200"> | <img src="docs/screenshots/screen-more.png" width="200"> |
+| 任务与提醒 | 文件管理 | 知识库 |
+| --- | --- | --- |
+| <img src="docs/screenshots/screen-tasks.png" width="220"> | <img src="docs/screenshots/screen-file.png" width="220"> | <img src="docs/screenshots/screen-knowledge.png" width="220"> |
+
+| API 服务 | 设置 | 更多能力 |
+| --- | --- | --- |
+| <img src="docs/screenshots/API设置.png" width="220"> | <img src="docs/screenshots/设置页.png" width="220"> | <img src="docs/screenshots/screen-more.png" width="220"> |
+
+---
 
 ## ✨ 核心功能
 
@@ -42,11 +61,11 @@
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/<your-name>/lingxi-flow-agent.git
+git clone https://github.com/XCNXNXNX/lingxi-flow-agent.git
 
 # 2. 用 DevEco Studio 打开项目，等待依赖同步（ohpm）
 
-# 3. 配置签名（上架/真机安装需要）
+# 3. 配置签名（真机安装/上架需要）
 #    build-profile.json5 中的签名 material 已替换为占位符，
 #    请按华为开发者文档生成自己的 .p12/.cer/.p7b 后填入：
 #    https://developer.huawei.com/consumer/cn/doc/app/agc-help-devvo-0000001050445824
@@ -54,6 +73,8 @@ git clone https://github.com/<your-name>/lingxi-flow-agent.git
 # 4. 构建
 hvigorw assembleHap --mode module -p product=default --no-daemon
 ```
+
+> 📦 也可以直接下载 [Releases](https://github.com/XCNXNXNX/lingxi-flow-agent/releases) 中的签名安装包体验。
 
 ### 使用 AI 功能
 
