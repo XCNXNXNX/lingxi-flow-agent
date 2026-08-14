@@ -6,6 +6,16 @@
 
 2026 中国高校计算机大赛 · 人工智能创意赛（鸿蒙赛道）参赛作品。
 
+## 📱 预览
+
+| AI 对话 | 任务与提醒 | 知识库 |
+| --- | --- | --- |
+| <img src="docs/screenshots/screen-chat.png" width="200"> | <img src="docs/screenshots/screen-tasks.png" width="200"> | <img src="docs/screenshots/screen-knowledge.png" width="200"> |
+
+| 文件管理 | 更多能力 |
+| --- | --- |
+| <img src="docs/screenshots/screen-file.png" width="200"> | <img src="docs/screenshots/screen-more.png" width="200"> |
+
 ## ✨ 核心功能
 
 - **💬 AI 对话**：接入 DeepSeek / OpenAI / 通义千问 / Kimi / 智谱 GLM 等主流大模型，支持工具调用（Function Calling）
